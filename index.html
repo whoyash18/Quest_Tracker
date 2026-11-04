@@ -39,6 +39,7 @@ a{color:var(--accent)}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 [hidden]{display:none!important}
 
+/* Styles for the boot screen and sign-in page. They reuse the app's colour variables so light/dark mode works automatically. */
 .boot{min-height:100vh;display:grid;place-items:center;color:var(--muted);font:500 13px var(--mono);letter-spacing:.12em;text-transform:uppercase}
 .login{min-height:100vh;display:grid;place-items:center;padding-block:max(24px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .login-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 24px;display:grid;gap:14px}
@@ -48,6 +49,12 @@ a{color:var(--accent)}
 .login-form input::placeholder{color:var(--muted)}
 .login-form .btn{min-height:50px}
 .btn[disabled]{opacity:.6;cursor:not-allowed}
+/* .fgrp groups a label with its input. .chk and the checkbox rule stop the "Show password" tick box inheriting the big text-input style. */
+.fgrp{display:grid;gap:6px}
+.chk{display:flex;align-items:center;gap:8px;cursor:pointer}
+.login-form input[type=checkbox]{width:auto;min-height:0;accent-color:var(--accent)}
+.linkbtn{justify-self:start;background:none;border:0;padding:6px 0;color:var(--accent);font-weight:600;font-size:14px;cursor:pointer;text-decoration:underline}
+.login-card .seg button{flex:1}
 
 .hud{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding-bottom:20px;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;font:800 15px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -194,7 +201,15 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
 </head>
 <body>
 
+<!-- BOOT SCREEN: shown for a moment while we check whether the visitor is already signed in.
+     Without it the sign-in page would flash for a split second for people who are logged in. -->
 <div class="boot" id="boot" role="status">Loading…</div>
+
+<!-- SIGN-IN PAGE: one card with four modes (Sign in, Create account, Forgot password, Set new password).
+     It lives inside index.html (not a separate login.html) so the sign-in session and the
+     password-reset link both come back to the same page and no redirects can get lost.
+     The JS function setAuthMode() shows or hides the fields for each mode. -->
+
 
 <section class="login" id="login" hidden aria-labelledby="loginTitle">
   <div class="login-card">
@@ -203,16 +218,33 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
       Sidequest Ledger
     </div>
     <h1 id="loginTitle">Sign in</h1>
-    <p class="note" id="loginIntro">Enter your email and we will send you a sign-in link. No password needed. Your quests then follow you to every device.</p>
+    <div class="seg" id="authTabs" role="radiogroup" aria-label="Account action">
+      <button type="button" role="radio" aria-checked="true" data-auth="signin">Sign in</button>
+      <button type="button" role="radio" aria-checked="false" data-auth="signup">Create account</button>
+    </div>
+    <p class="note" id="loginIntro"></p>
     <form class="login-form" id="loginForm" novalidate>
-      <label class="note" for="loginEmail">Email address</label>
-      <input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com" required>
-      <button class="btn primary" id="loginBtn" type="submit">Send sign-in link</button>
+      <div class="fgrp" id="emailWrap">
+        <label class="note" for="loginEmail">Email address</label>
+        <input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com" required>
+      </div>
+      <div class="fgrp" id="pwWrap">
+        <label class="note" for="loginPass">Password</label>
+        <input id="loginPass" type="password" autocomplete="current-password" placeholder="Your password">
+        <div class="fgrp" id="pw2Wrap" hidden>
+          <label class="note" for="loginPass2">Confirm password</label>
+          <input id="loginPass2" type="password" autocomplete="new-password" placeholder="Type it again">
+        </div>
+        <label class="note chk"><input type="checkbox" id="showPw"> Show password</label>
+      </div>
+      <button class="btn primary" id="loginBtn" type="submit">Sign in</button>
     </form>
+    <button type="button" class="linkbtn" id="forgotBtn">Forgot password?</button>
     <p class="note" id="loginMsg" role="status"></p>
   </div>
 </section>
 
+<!-- MAIN APP: hidden until sign-in succeeds, so signed-out visitors never see anyone's quests. -->
 <div class="app" hidden>
   <header class="hud">
     <div class="brand">
@@ -277,6 +309,7 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
   </div>
 </div>
 
+<!-- Supabase's browser library. Gives us sign-up/sign-in and database calls without writing any server code. -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
@@ -310,6 +343,10 @@ var EFFORT_LABEL={quick:'Quick',standard:'Standard',epic:'Epic'};
 var RANKS=['Newcomer','Scout','Explorer','Wanderer','Collector','Trailblazer','Veteran','Master','Legend','Mythic'];
 var UPDATE_XP=10, UPDATE_CAP=5, STEP_XP=5;
 var LS_KEY='sidequest-ledger-v1';
+/* Browser-storage keys used for sync:
+   LS_PENDING = changes not yet sent to the database (kept so nothing is lost offline or on reload)
+   LS_OWNER   = which account this browser's local copy belongs to (stops one person's quests
+                leaking into another account on a shared computer) */
 var LS_PENDING='sidequest-ledger-pending';
 var LS_OWNER='sidequest-ledger-owner';
 var ICONS={
@@ -328,7 +365,10 @@ var tab='active', filter='all', openId=null, view='list', addKind='auto';
 var drafts={}, stepDrafts={}, detailState={};
 var confirmDel=null, confirmTimer=null, flashTimer=null;
 var ac={items:[],index:-1,open:false,status:''}, acTimer=null, acCtl=null;
-/* account and sync state */
+/* account and sync state
+   sb = the Supabase client, user = who is signed in (null when signed out),
+   pending = ids waiting to be saved (up) or removed (del) in the database,
+   flushing/syncing = guards so two syncs never run at the same time. */
 var sb=null, user=null;
 var pending={up:{},del:{}}, flushing=false, syncing=false, pushTimer=null, retryTimer=null;
 
@@ -445,6 +485,9 @@ function importData(file){
    and pushed to the quests table. The queue survives reloads and offline
    periods. After pushing, the app pulls the account's rows so other
    devices' changes show up. */
+/* Why a "pending" queue instead of saving straight to the database:
+   the app keeps working with a slow or missing connection, and many quick edits
+   are sent together in one request instead of one request per keystroke or tick. */
 function loadPending(){
   try{var p=JSON.parse(lsGet(LS_PENDING)||'null');if(p&&p.up&&p.del)pending=p}catch(e){}
 }
@@ -452,11 +495,18 @@ function savePending(){lsSet(LS_PENDING,JSON.stringify(pending))}
 function markUp(id){pending.up[id]=1;delete pending.del[id];savePending();schedulePush()}
 function markDel(id){delete pending.up[id];pending.del[id]=1;savePending();schedulePush()}
 function hasPending(){return Object.keys(pending.up).length>0||Object.keys(pending.del).length>0}
+/* Wait 0.7s after the last change before sending, so a burst of edits becomes one save. */
 function schedulePush(){
   if(!sb||!user)return;
   clearTimeout(pushTimer);
   pushTimer=setTimeout(function(){syncNow()},700);
 }
+/* flush(): send queued changes to the database. Returns true on success.
+   The ids are taken off the queue BEFORE sending, so an edit made while the request
+   is in flight is queued again instead of being wiped. If the request fails, they go
+   back on the queue and are retried later. upsert = insert or update in one call;
+   user_id is filled in by the database, and the row-level-security rule you created
+   guarantees a person can only touch their own rows. */
 async function flush(){
   if(!sb||!user)return false;
   if(flushing)return false;
@@ -481,6 +531,10 @@ async function flush(){
     return false;
   }
 }
+/* pull(): download this account's quests so changes from other devices appear here.
+   Anything still waiting in `pending` is skipped, because the local version is newer.
+   A quest missing from the database (and not pending) was deleted on another device,
+   so it is removed here too. Returns true if something changed, so we only redraw when needed. */
 async function pull(){
   var res=await sb.from('quests').select('id,data');
   if(res.error)throw res.error;
@@ -499,6 +553,10 @@ async function pull(){
   });
   return changed;
 }
+/* syncNow(): the one sync routine. Order matters: push our changes first, then pull,
+   otherwise pulling could overwrite edits that have not been uploaded yet.
+   If we are offline it just retries after 20 seconds; nothing is lost because the
+   data is still saved in the browser. */
 async function syncNow(){
   if(!sb||!user||syncing)return;
   syncing=true;
@@ -521,6 +579,10 @@ async function syncNow(){
 }
 
 /* ---------- account (Supabase auth) ---------- */
+/* adoptUser(): runs when someone signs in. It decides what to do with the quests already
+   stored in this browser: upload them if the browser has no owner yet (your existing data
+   moves to the account), keep them if it is the same account, or wipe them if a
+   different account is signing in (privacy on shared computers). */
 function adoptUser(){
   var owner=lsGet(LS_OWNER);
   if(owner&&owner!==user.id){
@@ -533,16 +595,59 @@ function adoptUser(){
   lsSet(LS_OWNER,user.id);
 }
 function loginMsg(t,isErr){var el=$('#loginMsg');el.textContent=t||'';el.className='note'+(isErr?' err':'')}
+/* authMode = which form the sign-in card is showing.
+   recovering = true when the visitor arrived from a "reset password" email link.
+   It is read from the URL right now, because Supabase removes that part of the URL once it processes it. */
+var authMode='signin', recovering=/type=recovery/.test(location.hash||'');
+var AUTH_TITLE={signin:'Sign in',signup:'Create account',forgot:'Reset password',reset:'Set a new password'};
+var AUTH_BTN={signin:'Sign in',signup:'Create account',forgot:'Send reset link',reset:'Save new password'};
+var AUTH_LINK={signin:'Forgot password?',forgot:'Back to sign in',reset:'Skip for now'};
 function updateLoginIntro(){
-  var el=$('#loginIntro'), base='Enter your email and we will send you a sign-in link. No password needed. Your quests then follow you to every device.';
-  if(quests.size&&!lsGet(LS_OWNER))base+=' The '+plural(quests.size,'quest')+' already saved on this device will be uploaded to your account the first time you sign in.';
-  el.textContent=base;
+  var t={
+    signin:'Sign in with your email and password. Your quests follow you to every device.',
+    signup:'Create your account once. On any other device, just sign in with the same email and password.',
+    forgot:'Enter your email and we will send you a link to choose a new password.',
+    reset:'Choose a new password for your account.'
+  }[authMode];
+  if((authMode==='signin'||authMode==='signup')&&quests.size&&!lsGet(LS_OWNER))t+=' The '+plural(quests.size,'quest')+' already saved on this device will be uploaded to your account the first time you sign in.';
+  $('#loginIntro').textContent=t;
 }
+/* setAuthMode(): one function switches the card between modes by showing/hiding fields,
+   instead of keeping four separate pages. It also stops any resend countdown and clears old messages. */
+function setAuthMode(m){
+  authMode=m;
+  clearInterval(cooldownTimer);
+  $('#loginTitle').textContent=AUTH_TITLE[m];
+  $('#authTabs').hidden=(m==='forgot'||m==='reset');
+  Array.prototype.forEach.call($('#authTabs').querySelectorAll('button'),function(b){b.setAttribute('aria-checked',String(b.getAttribute('data-auth')===m))});
+  $('#emailWrap').hidden=(m==='reset');
+  $('#pwWrap').hidden=(m==='forgot');
+  $('#pw2Wrap').hidden=!(m==='signup'||m==='reset');
+  $('#loginPass').autocomplete=(m==='signin')?'current-password':'new-password';
+  $('#loginPass').placeholder=(m==='signin')?'Your password':'At least 8 characters';
+  var btn=$('#loginBtn');btn.disabled=false;btn.textContent=AUTH_BTN[m];
+  var fb=$('#forgotBtn');fb.hidden=(m==='signup');fb.textContent=AUTH_LINK[m]||'';
+  loginMsg('');
+  updateLoginIntro();
+}
+/* handleSession(): the single place that decides what the visitor sees.
+   Signed in -> show the app and start syncing. Signed out -> show the sign-in card.
+   If they came from a reset link they are technically signed in, but we first make them
+   choose a new password. The "same user" check stops repeated sync runs when the browser
+   re-announces the same session (for example when you switch back to the tab). */
 function handleSession(session){
   $('#boot').hidden=true;
+  if(recovering&&session&&session.user){
+    /* arrived from a password reset link: ask for the new password first */
+    user=null;
+    $('.app').hidden=true;$('#login').hidden=false;
+    if(authMode!=='reset')setAuthMode('reset');
+    return;
+  }
   if(session&&session.user){
     if(user&&user.id===session.user.id)return;
     user=session.user;
+    $('#loginPass').value='';$('#loginPass2').value='';
     adoptUser();
     $('#login').hidden=true;$('.app').hidden=false;
     renderAll();
@@ -554,6 +659,10 @@ function handleSession(session){
     updateLoginIntro();
   }
 }
+/* initAuth(): creates the Supabase client and starts listening for sign-in/sign-out.
+   persistSession keeps people signed in after closing the tab; autoRefreshToken renews the
+   login quietly; detectSessionInUrl lets the reset-password link sign the visitor in.
+   If the library failed to load (offline), we show the sign-in card with an explanation. */
 function initAuth(){
   if(!window.supabase||!window.supabase.createClient){
     $('#boot').hidden=true;$('#login').hidden=false;updateLoginIntro();
@@ -563,9 +672,13 @@ function initAuth(){
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
   /* defer work out of the callback: calling Supabase inside it can deadlock */
   sb.auth.onAuthStateChange(function(event,session){
+    if(event==='PASSWORD_RECOVERY')recovering=true;
     setTimeout(function(){handleSession(session)},0);
   });
 }
+/* signOut(): save anything still queued first, warn if that fails, then clear the local copy.
+   Clearing matters because the real copy now lives in the account; leaving it behind would
+   let the next person on a shared device see these quests. */
 async function signOut(){
   if(!sb)return;
   setSync('Signing out…');
@@ -578,39 +691,100 @@ async function signOut(){
   renderAll();handleSession(null);
 }
 var cooldownTimer=null;
+/* startCooldown(): disables the button for 60s after sending a reset email, because Supabase
+   limits how many emails it will send and repeated clicks would hit that limit. */
 function startCooldown(sec){
-  var btn=$('#loginBtn');btn.disabled=true;
+  var btn=$('#loginBtn'), label=AUTH_BTN[authMode];
+  btn.disabled=true;
   clearInterval(cooldownTimer);
-  (function tick(){
-    if(sec<=0){clearInterval(cooldownTimer);btn.disabled=false;btn.textContent='Send sign-in link';return}
+  function tick(){
+    if(sec<=0){clearInterval(cooldownTimer);btn.disabled=false;btn.textContent=label;return}
     btn.textContent='Send again in '+sec+'s';sec--;
-  })();
-  cooldownTimer=setInterval(function(){
-    if(sec<=0){clearInterval(cooldownTimer);btn.disabled=false;btn.textContent='Send sign-in link';return}
-    btn.textContent='Send again in '+sec+'s';sec--;
-  },1000);
-}
-async function sendLink(e){
-  e.preventDefault();
-  var email=$('#loginEmail').value.trim();
-  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){loginMsg('Enter a valid email address.',true);return}
-  if(!sb){loginMsg('Sign-in is unavailable right now. Reload the page and try again.',true);return}
-  var btn=$('#loginBtn');btn.disabled=true;btn.textContent='Sending…';loginMsg('');
-  try{
-    var r=await sb.auth.signInWithOtp({email:email,options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:true}});
-    if(r.error)throw r.error;
-    loginMsg('Link sent to '+email+'. Open it on this device to sign in. It can take a minute, and it may land in spam.');
-    startCooldown(60);
-  }catch(err){
-    btn.disabled=false;btn.textContent='Send sign-in link';
-    var m=String((err&&err.message)||'');
-    if((err&&err.status===429)||/rate limit|too many|seconds/i.test(m))loginMsg('Too many emails were requested. Wait a few minutes and try again.',true);
-    else if(/fetch|network/i.test(m))loginMsg('Could not reach the sign-in service. Check your connection.',true);
-    else loginMsg(m||'Could not send the link. Try again.',true);
   }
+  tick();
+  cooldownTimer=setInterval(tick,1000);
+}
+/* leaveReset(): "Skip for now" on the new-password screen. The reset link already signed
+   this device in, so skipping simply continues into the app. */
+async function leaveReset(){
+  /* skipping the new-password step: the reset link already signed this device in */
+  recovering=false;
+  setAuthMode('signin');
+  if(sb){var s=await sb.auth.getSession();handleSession(s.data&&s.data.session)}
+}
+/* authError(): turns Supabase's technical error text into plain advice. */
+function authError(err,mode){
+  var m=String((err&&err.message)||''), st=err&&err.status;
+  if(st===429||/rate limit|too many/i.test(m))return 'Too many attempts. Wait a few minutes and try again.';
+  if(/invalid login credentials/i.test(m))return 'Wrong email or password. New here? Choose Create account. Forgot it? Use Forgot password.';
+  if(/email not confirmed/i.test(m))return 'Confirm your email first. Check your inbox for the confirmation link, then sign in.';
+  if(/already registered|already been registered/i.test(m))return 'An account with this email already exists. Sign in instead.';
+  if(mode==='reset'&&/session|expired|invalid/i.test(m))return 'This reset link has expired. Choose Skip for now, then request a new link.';
+  if(/same.*password|different from the old/i.test(m))return 'Choose a password you have not used on this account before.';
+  if(/fetch|network/i.test(m))return 'Could not reach the sign-in service. Check your connection.';
+  return m||'Something went wrong. Try again.';
+}
+/* submitAuth(): handles the form for all four modes.
+   1) Check the input in the browser first (valid email, 8+ characters, passwords match) to give instant feedback.
+   2) Call the matching Supabase function: signInWithPassword, signUp, resetPasswordForEmail or updateUser.
+   3) After a successful sign-in we do nothing more here: the auth listener in initAuth()
+      notices the new session and switches to the app.
+   Sign-up says "already exists" for a duplicate email so users are pointed to Forgot password. */
+async function submitAuth(e){
+  e.preventDefault();
+  var m=authMode, email=$('#loginEmail').value.trim(), pw=$('#loginPass').value, pw2=$('#loginPass2').value;
+  if(m!=='reset'&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){loginMsg('Enter a valid email address.',true);return}
+  if(m!=='forgot'){
+    if(!pw){loginMsg('Enter your password.',true);return}
+    if((m==='signup'||m==='reset')&&pw.length<8){loginMsg('Use a password with at least 8 characters.',true);return}
+    if((m==='signup'||m==='reset')&&pw!==pw2){loginMsg('The two passwords do not match.',true);return}
+  }
+  if(!sb){loginMsg('Sign-in is unavailable right now. Reload the page and try again.',true);return}
+  var btn=$('#loginBtn'), keep=false, redirect=location.origin+location.pathname;
+  btn.disabled=true;btn.textContent='Please wait…';loginMsg('');
+  try{
+    if(m==='signin'){
+      recovering=false;
+      var r1=await sb.auth.signInWithPassword({email:email,password:pw});
+      if(r1.error)throw r1.error;
+      /* the auth listener now switches to the app */
+    }else if(m==='signup'){
+      recovering=false;
+      var r2=await sb.auth.signUp({email:email,password:pw,options:{emailRedirectTo:redirect}});
+      if(r2.error)throw r2.error;
+      if(!r2.data.session){
+        var exists=!!(r2.data.user&&r2.data.user.identities&&r2.data.user.identities.length===0);
+        setAuthMode('signin');
+        if(exists)loginMsg('An account with this email already exists. Sign in, or use Forgot password to set a password.',true);
+        else loginMsg('Account created. We sent a confirmation link to '+email+'. Open it, then sign in here.');
+        return;
+      }
+    }else if(m==='forgot'){
+      recovering=false;
+      var r3=await sb.auth.resetPasswordForEmail(email,{redirectTo:redirect});
+      if(r3.error)throw r3.error;
+      loginMsg('If an account exists for '+email+', a reset link is on its way. It may land in spam.');
+      keep=true;startCooldown(60);
+    }else{
+      var r4=await sb.auth.updateUser({password:pw});
+      if(r4.error)throw r4.error;
+      recovering=false;
+      $('#loginPass').value='';$('#loginPass2').value='';
+      setAuthMode('signin');
+      var s=await sb.auth.getSession();
+      handleSession(s.data&&s.data.session);
+      return;
+    }
+  }catch(err){
+    loginMsg(authError(err,m),true);
+  }
+  if(!keep){btn.disabled=false;btn.textContent=AUTH_BTN[authMode]}
 }
 
 /* ---------- changing quests ---------- */
+/* mutate(): every edit goes through here. It saves in the browser (instant), then calls
+   markUp(id) to queue the quest for the database. Because all edits share this one path,
+   syncing could be added without touching the many individual buttons. */
 function mutate(id,fn,opts){
   var cur=quests.get(id);if(!cur)return;
   var before=totalXp(), q=clone(cur);fn(q);quests.set(id,q);
@@ -1031,7 +1205,18 @@ $('#celBtn').addEventListener('click',closeCelebrate);
 $('#celebrate').addEventListener('click',function(e){if(e.target===this)closeCelebrate()});
 $('#exportBtn').addEventListener('click',exportData);
 $('#signOutBtn').addEventListener('click',signOut);
-$('#loginForm').addEventListener('submit',sendLink);
+/* Sign-in page wiring: form submit, the Sign in / Create account tabs, the Forgot password
+   link (its meaning changes per mode: forgot / back / skip), and the show-password tick box. */
+$('#loginForm').addEventListener('submit',submitAuth);
+$('#authTabs').addEventListener('click',function(e){var b=e.target.closest('[data-auth]');if(b)setAuthMode(b.getAttribute('data-auth'))});
+$('#forgotBtn').addEventListener('click',function(){
+  if(authMode==='signin')setAuthMode('forgot');
+  else if(authMode==='reset')leaveReset();
+  else setAuthMode('signin');
+});
+$('#showPw').addEventListener('change',function(){
+  var t=this.checked?'text':'password';$('#loginPass').type=t;$('#loginPass2').type=t;
+});
 $('#addBtn').addEventListener('click',function(){
   var v=$('#addInput').value.trim();
   if(ac.index>=0&&ac.open)pickAc(ac.index);else addCustom(v);
@@ -1056,8 +1241,11 @@ addInput.addEventListener('focus',function(){if(addInput.value.trim().length>=2&
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&user)syncNow()});
 window.addEventListener('online',function(){if(user)syncNow()});
 
-/* ---------- start ---------- */
-setHint();loadLocal();loadPending();renderSeg();renderAll();initAuth();
+/* ---------- start ----------
+   Order: load what is stored in this browser, draw the app (still hidden), set the sign-in
+   card to its default mode, then ask Supabase who is signed in. initAuth() ends up in
+   handleSession(), which reveals either the app or the sign-in card. */
+setHint();loadLocal();loadPending();renderSeg();renderAll();setAuthMode('signin');initAuth();
 })();
 </script>
 </body>
