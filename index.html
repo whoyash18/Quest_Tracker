@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z' fill='%23F0A500'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a game-style scoreboard on top, a quest adder under it, then a two-column ledger (list left, quest detail right). */
+/* Layout: a sign-in screen, then a game-style scoreboard on top, a quest adder under it, then a two-column ledger (list left, quest detail right). */
 :root{
   --bg:#EDF0F1; --surface:#F8FAFA; --surface-2:#E2E8EA; --line:#C9D2D6;
   --fg:#12202A; --muted:#4D5E69;
@@ -38,6 +38,16 @@ a{color:var(--accent)}
 .app{max-width:1120px;margin:0 auto;padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 [hidden]{display:none!important}
+
+.boot{min-height:100vh;display:grid;place-items:center;color:var(--muted);font:500 13px var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.login{min-height:100vh;display:grid;place-items:center;padding-block:max(24px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.login-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 24px;display:grid;gap:14px}
+.login-card h1{margin:0;font:800 clamp(34px,9vw,44px)/.95 var(--display);letter-spacing:.01em;text-transform:uppercase}
+.login-form{display:grid;gap:10px}
+.login-form input{min-height:50px;padding:0 16px;font-size:16px;background:var(--bg);border:1px solid var(--line);border-radius:10px;width:100%}
+.login-form input::placeholder{color:var(--muted)}
+.login-form .btn{min-height:50px}
+.btn[disabled]{opacity:.6;cursor:not-allowed}
 
 .hud{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding-bottom:20px;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;font:800 15px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
@@ -183,7 +193,27 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
 </style>
 </head>
 <body>
-<div class="app">
+
+<div class="boot" id="boot" role="status">Loading…</div>
+
+<section class="login" id="login" hidden aria-labelledby="loginTitle">
+  <div class="login-card">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>
+      Sidequest Ledger
+    </div>
+    <h1 id="loginTitle">Sign in</h1>
+    <p class="note" id="loginIntro">Enter your email and we will send you a sign-in link. No password needed. Your quests then follow you to every device.</p>
+    <form class="login-form" id="loginForm" novalidate>
+      <label class="note" for="loginEmail">Email address</label>
+      <input id="loginEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" placeholder="you@example.com" required>
+      <button class="btn primary" id="loginBtn" type="submit">Send sign-in link</button>
+    </form>
+    <p class="note" id="loginMsg" role="status"></p>
+  </div>
+</section>
+
+<div class="app" hidden>
   <header class="hud">
     <div class="brand">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>
@@ -228,6 +258,7 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
         <button type="button" class="btn quiet small" id="exportBtn">Export backup</button>
         <label class="btn quiet small" for="importFile" style="cursor:pointer">Import backup</label>
         <input type="file" id="importFile" accept="application/json,.json" hidden>
+        <button type="button" class="btn quiet small" id="signOutBtn">Sign out</button>
       </span>
     </div>
     <p class="credits" id="credits"></p>
@@ -246,6 +277,7 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
 'use strict';
@@ -256,10 +288,16 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
    RAWG_KEY: your RAWG key. Leave '' for now. Game search then falls back
              to Wikipedia. Paste the key between the quotes to switch on
              RAWG game covers and details.
-   Both keys are visible to anyone who views this page's source.
+   SUPABASE_URL / SUPABASE_ANON_KEY: your Supabase project. The anon key
+             is meant to be public. Your data is protected by the row
+             level security rule on the quests table, not by hiding this key.
+             Never put the service_role key here.
+   All of these are visible to anyone who views this page's source.
    ===================================================================== */
 var TMDB_KEY='b664d624eba65e07153f430b86badf5a';
 var RAWG_KEY='';
+var SUPABASE_URL='https://urhjydjaegyyrnthxabb.supabase.co';
+var SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyaGp5ZGphZWd5eXJudGh4YWJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM3NzM2NTEsImV4cCI6MjEwOTM0OTY1MX0.6qIG9jD0lzIIJoUsHAO-NjXXB5iIxM_PHlFy1t0LG4g';
 
 /* ---------- constants ---------- */
 var KINDS={movie:'Movie',game:'Game',place:'Place',task:'Task'};
@@ -272,6 +310,8 @@ var EFFORT_LABEL={quick:'Quick',standard:'Standard',epic:'Epic'};
 var RANKS=['Newcomer','Scout','Explorer','Wanderer','Collector','Trailblazer','Veteran','Master','Legend','Mythic'];
 var UPDATE_XP=10, UPDATE_CAP=5, STEP_XP=5;
 var LS_KEY='sidequest-ledger-v1';
+var LS_PENDING='sidequest-ledger-pending';
+var LS_OWNER='sidequest-ledger-owner';
 var ICONS={
   movie:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 10h4M3 14h4M17 10h4M17 14h4"/>',
   game:'<path d="M7 8h10a4 4 0 0 1 4 4v1a3 3 0 0 1-5.2 2L14 13h-4l-1.8 2A3 3 0 0 1 3 13v-1a4 4 0 0 1 4-4z"/><path d="M8 10.5v3M6.5 12h3"/>',
@@ -288,6 +328,9 @@ var tab='active', filter='all', openId=null, view='list', addKind='auto';
 var drafts={}, stepDrafts={}, detailState={};
 var confirmDel=null, confirmTimer=null, flashTimer=null;
 var ac={items:[],index:-1,open:false,status:''}, acTimer=null, acCtl=null;
+/* account and sync state */
+var sb=null, user=null;
+var pending={up:{},del:{}}, flushing=false, syncing=false, pushTimer=null, retryTimer=null;
 
 function $(s){return document.querySelector(s)}
 function enc(s){return encodeURIComponent(s)}
@@ -300,6 +343,9 @@ function trimText(t,max){t=String(t||'').replace(/\s+/g,' ').trim();if(t.length<
 function safeImg(u){return typeof u==='string'&&/^https:\/\/(image\.tmdb\.org|media\.rawg\.io|upload\.wikimedia\.org)\//.test(u)?u:null}
 function safeUrl(u){return typeof u==='string'&&/^https:\/\/([a-z.]*\.)?(themoviedb\.org|rawg\.io|wikipedia\.org)\//.test(u)?u:null}
 function norm(s){return String(s||'').toLowerCase().replace(/^the\s+/,'').replace(/[^a-z0-9]+/g,'')}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function lsDel(k){try{localStorage.removeItem(k)}catch(e){}}
 async function jget(url,sig){
   var r=await fetch(url,sig?{signal:sig}:undefined);
   if(!r.ok)throw new Error('HTTP '+r.status);
@@ -369,9 +415,10 @@ function normalize(d,id){
   q.effort=EFFORT[q.effort]?q.effort:'standard';return q;
 }
 function flash(msg){var el=$('#flash');el.textContent=msg;clearTimeout(flashTimer);flashTimer=setTimeout(function(){el.textContent=''},5000)}
+function setSync(msg){$('#sync').textContent=(user&&user.email?user.email+' · ':'')+msg}
 function saveLocal(){
-  try{localStorage.setItem(LS_KEY,JSON.stringify(Array.from(quests.values())));$('#sync').textContent='Saved in this browser'}
-  catch(e){$('#sync').textContent='Could not save here. Use Export backup.'}
+  try{localStorage.setItem(LS_KEY,JSON.stringify(Array.from(quests.values())))}
+  catch(e){setSync('Could not save on this device. Use Export backup.')}
 }
 function loadLocal(){
   try{var raw=localStorage.getItem(LS_KEY);if(raw){JSON.parse(raw).forEach(function(d){if(d&&d.id)quests.set(d.id,normalize(d,d.id))})}}catch(e){}
@@ -388,16 +435,186 @@ function importData(file){
   file.text().then(function(txt){
     var d=JSON.parse(txt), arr=Array.isArray(d)?d:d.quests, n=0;
     if(!Array.isArray(arr))throw new Error('bad');
-    arr.forEach(function(q){if(q&&q.id&&q.title){quests.set(q.id,normalize(q,q.id));n++}});
+    arr.forEach(function(q){if(q&&q.id&&q.title){quests.set(q.id,normalize(q,q.id));markUp(q.id);n++}});
     saveLocal();renderAll();flash('Imported '+plural(n,'quest')+'.');
   }).catch(function(){flash('That file is not a Sidequest backup.')});
+}
+
+/* ---------- cloud sync (Supabase) ----------
+   Every change is saved in this browser first, then queued in `pending`
+   and pushed to the quests table. The queue survives reloads and offline
+   periods. After pushing, the app pulls the account's rows so other
+   devices' changes show up. */
+function loadPending(){
+  try{var p=JSON.parse(lsGet(LS_PENDING)||'null');if(p&&p.up&&p.del)pending=p}catch(e){}
+}
+function savePending(){lsSet(LS_PENDING,JSON.stringify(pending))}
+function markUp(id){pending.up[id]=1;delete pending.del[id];savePending();schedulePush()}
+function markDel(id){delete pending.up[id];pending.del[id]=1;savePending();schedulePush()}
+function hasPending(){return Object.keys(pending.up).length>0||Object.keys(pending.del).length>0}
+function schedulePush(){
+  if(!sb||!user)return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(function(){syncNow()},700);
+}
+async function flush(){
+  if(!sb||!user)return false;
+  if(flushing)return false;
+  var up=Object.keys(pending.up), del=Object.keys(pending.del);
+  if(!up.length&&!del.length)return true;
+  flushing=true;
+  up.forEach(function(id){delete pending.up[id]});
+  del.forEach(function(id){delete pending.del[id]});
+  savePending();
+  try{
+    var now=new Date().toISOString();
+    var rows=up.filter(function(id){return quests.has(id)}).map(function(id){return {id:id,data:quests.get(id),updated_at:now}});
+    if(rows.length){var r1=await sb.from('quests').upsert(rows,{onConflict:'id'});if(r1.error)throw r1.error}
+    if(del.length){var r2=await sb.from('quests').delete().in('id',del);if(r2.error)throw r2.error}
+    flushing=false;
+    return true;
+  }catch(e){
+    up.forEach(function(id){pending.up[id]=1});
+    del.forEach(function(id){pending.del[id]=1});
+    savePending();
+    flushing=false;
+    return false;
+  }
+}
+async function pull(){
+  var res=await sb.from('quests').select('id,data');
+  if(res.error)throw res.error;
+  var remote={}, changed=false;
+  (res.data||[]).forEach(function(r){
+    remote[r.id]=1;
+    if(pending.up[r.id]||pending.del[r.id])return;
+    var n=normalize(r.data||{},r.id), cur=quests.get(r.id);
+    if(!cur||JSON.stringify(cur)!==JSON.stringify(n)){quests.set(r.id,n);changed=true}
+  });
+  Array.from(quests.keys()).forEach(function(id){
+    if(!remote[id]&&!pending.up[id]){
+      quests.delete(id);changed=true;
+      if(openId===id){openId=null;view='list'}
+    }
+  });
+  return changed;
+}
+async function syncNow(){
+  if(!sb||!user||syncing)return;
+  syncing=true;
+  clearTimeout(retryTimer);
+  setSync('Syncing…');
+  var ok=false, changed=false;
+  try{
+    ok=await flush();
+    if(ok){changed=await pull()}
+  }catch(e){ok=false}
+  syncing=false;
+  if(!ok){
+    setSync('Offline. Saved on this device, will sync later.');
+    retryTimer=setTimeout(function(){syncNow()},20000);
+    return;
+  }
+  if(changed){saveLocal();renderAll()}
+  setSync('Synced');
+  if(hasPending())schedulePush();
+}
+
+/* ---------- account (Supabase auth) ---------- */
+function adoptUser(){
+  var owner=lsGet(LS_OWNER);
+  if(owner&&owner!==user.id){
+    /* a different account used this browser before: start clean */
+    quests.clear();pending={up:{},del:{}};savePending();saveLocal();openId=null;view='list';
+  }else if(!owner){
+    /* first sign-in on this browser: upload what is already here */
+    quests.forEach(function(q,id){pending.up[id]=1});savePending();
+  }
+  lsSet(LS_OWNER,user.id);
+}
+function loginMsg(t,isErr){var el=$('#loginMsg');el.textContent=t||'';el.className='note'+(isErr?' err':'')}
+function updateLoginIntro(){
+  var el=$('#loginIntro'), base='Enter your email and we will send you a sign-in link. No password needed. Your quests then follow you to every device.';
+  if(quests.size&&!lsGet(LS_OWNER))base+=' The '+plural(quests.size,'quest')+' already saved on this device will be uploaded to your account the first time you sign in.';
+  el.textContent=base;
+}
+function handleSession(session){
+  $('#boot').hidden=true;
+  if(session&&session.user){
+    if(user&&user.id===session.user.id)return;
+    user=session.user;
+    adoptUser();
+    $('#login').hidden=true;$('.app').hidden=false;
+    renderAll();
+    setSync('Syncing…');
+    syncNow();
+  }else{
+    user=null;
+    $('.app').hidden=true;$('#login').hidden=false;
+    updateLoginIntro();
+  }
+}
+function initAuth(){
+  if(!window.supabase||!window.supabase.createClient){
+    $('#boot').hidden=true;$('#login').hidden=false;updateLoginIntro();
+    loginMsg('Could not load the sign-in service. Check your connection and reload the page.',true);
+    return;
+  }
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  /* defer work out of the callback: calling Supabase inside it can deadlock */
+  sb.auth.onAuthStateChange(function(event,session){
+    setTimeout(function(){handleSession(session)},0);
+  });
+}
+async function signOut(){
+  if(!sb)return;
+  setSync('Signing out…');
+  var ok=await flush();
+  if(!ok&&!confirm('Some changes have not been saved to your account yet. Sign out anyway and lose them?')){setSync('Synced');return}
+  try{await sb.auth.signOut()}catch(e){}
+  quests.clear();pending={up:{},del:{}};savePending();saveLocal();lsDel(LS_OWNER);
+  openId=null;view='list';tab='active';filter='all';
+  user=null;
+  renderAll();handleSession(null);
+}
+var cooldownTimer=null;
+function startCooldown(sec){
+  var btn=$('#loginBtn');btn.disabled=true;
+  clearInterval(cooldownTimer);
+  (function tick(){
+    if(sec<=0){clearInterval(cooldownTimer);btn.disabled=false;btn.textContent='Send sign-in link';return}
+    btn.textContent='Send again in '+sec+'s';sec--;
+  })();
+  cooldownTimer=setInterval(function(){
+    if(sec<=0){clearInterval(cooldownTimer);btn.disabled=false;btn.textContent='Send sign-in link';return}
+    btn.textContent='Send again in '+sec+'s';sec--;
+  },1000);
+}
+async function sendLink(e){
+  e.preventDefault();
+  var email=$('#loginEmail').value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){loginMsg('Enter a valid email address.',true);return}
+  if(!sb){loginMsg('Sign-in is unavailable right now. Reload the page and try again.',true);return}
+  var btn=$('#loginBtn');btn.disabled=true;btn.textContent='Sending…';loginMsg('');
+  try{
+    var r=await sb.auth.signInWithOtp({email:email,options:{emailRedirectTo:location.origin+location.pathname,shouldCreateUser:true}});
+    if(r.error)throw r.error;
+    loginMsg('Link sent to '+email+'. Open it on this device to sign in. It can take a minute, and it may land in spam.');
+    startCooldown(60);
+  }catch(err){
+    btn.disabled=false;btn.textContent='Send sign-in link';
+    var m=String((err&&err.message)||'');
+    if((err&&err.status===429)||/rate limit|too many|seconds/i.test(m))loginMsg('Too many emails were requested. Wait a few minutes and try again.',true);
+    else if(/fetch|network/i.test(m))loginMsg('Could not reach the sign-in service. Check your connection.',true);
+    else loginMsg(m||'Could not send the link. Try again.',true);
+  }
 }
 
 /* ---------- changing quests ---------- */
 function mutate(id,fn,opts){
   var cur=quests.get(id);if(!cur)return;
   var before=totalXp(), q=clone(cur);fn(q);quests.set(id,q);
-  var after=totalXp();saveLocal();renderAll();
+  var after=totalXp();saveLocal();markUp(id);renderAll();
   feedback(before,after,opts?{completed:opts.completed,q:q}:null);
 }
 function addQuest(p){
@@ -406,7 +623,7 @@ function addQuest(p){
   if(dup){openId=dup.id;tab='active';filter='all';$('#addInput').value='';closeAc();renderAll();flash('Already on your list.');return}
   var id='q'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   var q=normalize({title:title,sub:p.sub||'',kind:p.kind||'task',auto:!!p.auto,verified:!!p.verified,src:p.src||'',srcId:p.srcId||'',img:safeImg(p.img),url:safeUrl(p.url),status:'active',created:Date.now(),updates:[],highlights:[],facts:[],effort:'standard',cover:null,blurb:''},id);
-  quests.set(id,q);saveLocal();openId=id;tab='active';filter='all';
+  quests.set(id,q);saveLocal();markUp(id);openId=id;tab='active';filter='all';
   $('#addInput').value='';closeAc();renderAll();
   if(q.src)loadDetails(id);
   else if(q.kind!=='task'||q.auto)lookupBest(id,false);
@@ -787,7 +1004,7 @@ document.addEventListener('click',function(e){
   else if(a==='details'){var cq=quests.get(openId);if(cq){if(cq.src)loadDetails(openId);else lookupBest(openId,true)}}
   else if(a==='cover-remove'){mutate(openId,function(q){q.cover=null})}
   else if(a==='delete'){
-    if(confirmDel===openId){var did=openId;quests.delete(did);saveLocal();openId=null;view='list';confirmDel=null;renderAll()}
+    if(confirmDel===openId){var did=openId;quests.delete(did);saveLocal();markDel(did);openId=null;view='list';confirmDel=null;renderAll()}
     else{confirmDel=openId;clearTimeout(confirmTimer);confirmTimer=setTimeout(function(){confirmDel=null;renderDetail()},4000);renderDetail()}
   }
 });
@@ -813,6 +1030,8 @@ document.addEventListener('keydown',function(e){
 $('#celBtn').addEventListener('click',closeCelebrate);
 $('#celebrate').addEventListener('click',function(e){if(e.target===this)closeCelebrate()});
 $('#exportBtn').addEventListener('click',exportData);
+$('#signOutBtn').addEventListener('click',signOut);
+$('#loginForm').addEventListener('submit',sendLink);
 $('#addBtn').addEventListener('click',function(){
   var v=$('#addInput').value.trim();
   if(ac.index>=0&&ac.open)pickAc(ac.index);else addCustom(v);
@@ -833,9 +1052,12 @@ addInput.addEventListener('keydown',function(e){
 });
 addInput.addEventListener('blur',function(){setTimeout(function(){if(document.activeElement!==addInput){ac.open=false;renderAc()}},120)});
 addInput.addEventListener('focus',function(){if(addInput.value.trim().length>=2&&addKind!=='task'&&(ac.items.length||ac.status)){ac.open=true;renderAc()}});
+/* pick up changes from other devices when you come back to this tab */
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'&&user)syncNow()});
+window.addEventListener('online',function(){if(user)syncNow()});
 
 /* ---------- start ---------- */
-setHint();loadLocal();renderSeg();renderAll();
+setHint();loadLocal();loadPending();renderSeg();renderAll();initAuth();
 })();
 </script>
 </body>
