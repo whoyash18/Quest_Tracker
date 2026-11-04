@@ -1,0 +1,842 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="A personal quest log for movies, games, places and tasks with progress updates, XP and levels.">
+<title>Sidequest Ledger</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z' fill='%23F0A500'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a game-style scoreboard on top, a quest adder under it, then a two-column ledger (list left, quest detail right). */
+:root{
+  --bg:#EDF0F1; --surface:#F8FAFA; --surface-2:#E2E8EA; --line:#C9D2D6;
+  --fg:#12202A; --muted:#4D5E69;
+  --accent:#0A7A74; --accent-ink:#FFFFFF; --accent-soft:#D3ECEA;
+  --xp:#9A5B00; --xp-fill:#F0A500; --xp-ink:#2A1A00; --xp-soft:#F8E7BF;
+  --danger:#B3261E;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0D1418; --surface:#141E24; --surface-2:#1C2931; --line:#2A3A44;
+    --fg:#E7EEF1; --muted:#95A6B0;
+    --accent:#3FC5BB; --accent-ink:#05211F; --accent-soft:#12312F;
+    --xp:#F4BC45; --xp-fill:#F2B134; --xp-ink:#2A1A00; --xp-soft:#3A2D10;
+    --danger:#FF8A80;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--body);-webkit-text-size-adjust:100%}
+button,input,textarea{font:inherit;color:inherit}
+a{color:var(--accent)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.app{max-width:1120px;margin:0 auto;padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+
+.hud{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font:800 15px var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.brand svg{color:var(--xp-fill)}
+.score{position:relative;display:flex;align-items:flex-end;gap:20px;min-width:0}
+.lv{display:flex;flex-direction:column;line-height:1}
+.lv small{font:500 11px var(--mono);letter-spacing:.14em;color:var(--muted)}
+.lv b{font:800 clamp(64px,13vw,104px)/.82 var(--display);color:var(--fg);letter-spacing:-.01em}
+.xpcol{flex:1;min-width:0;padding-bottom:6px}
+.rank{font:700 22px/1 var(--display);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
+.bar{height:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--xp-fill);transition:width .7s cubic-bezier(.2,.8,.2,1)}
+.bar.teal i{background:var(--accent)}
+.bar.thin{height:6px}
+.xpnums{display:flex;justify-content:space-between;gap:12px;margin-top:6px;font-size:12px;color:var(--muted)}
+.tally{display:flex;gap:20px;flex-wrap:wrap;font:400 13px var(--mono);color:var(--muted)}
+.tally b{color:var(--fg);font-weight:500}
+.float-xp{position:absolute;right:0;top:-6px;font:500 18px var(--mono);color:var(--xp);animation:rise 1.4s ease-out forwards;pointer-events:none}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}15%{opacity:1}to{opacity:0;transform:translateY(-26px)}}
+
+.adder{padding-block:20px;display:grid;gap:10px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{min-height:36px;padding:0 14px;border:1px solid var(--line);background:transparent;border-radius:6px;cursor:pointer;color:var(--muted);font-weight:600;font-size:14px}
+.seg button[aria-checked="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.field{position:relative;display:flex;gap:8px}
+.field input{flex:1;min-width:0;min-height:50px;padding:0 16px;font-size:16px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.field input::placeholder{color:var(--muted)}
+.btn{min-height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line);background:var(--surface);cursor:pointer;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.gold{background:var(--xp-fill);color:var(--xp-ink);border-color:var(--xp-fill)}
+.btn.quiet{background:transparent}
+.btn.small{min-height:36px;padding:0 12px;font-size:13px}
+.btn.danger{color:var(--danger)}
+.ac{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:5;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.18);max-height:360px;overflow:auto;margin:0;padding:6px;list-style:none}
+.ac li{display:flex;align-items:center;gap:12px;padding:8px;border-radius:8px;cursor:pointer;min-height:52px}
+.ac li[aria-selected="true"],.ac li:hover{background:var(--surface-2)}
+.ac .t{font-weight:600}
+.ac .s{font-size:13px;color:var(--muted)}
+.ac .grow{min-width:0;flex:1}
+.ac .grow>*{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac .state{cursor:default;color:var(--muted);font-size:14px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+
+.bar-row{display:flex;gap:12px 20px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:16px}
+.tabs{display:flex;gap:4px}
+.tabs button{padding:8px 4px;margin-right:14px;background:none;border:0;border-bottom:3px solid transparent;font:800 22px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--fg);border-color:var(--xp-fill)}
+.tabs .n{font:400 12px var(--mono);margin-left:6px;vertical-align:middle}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{min-height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:transparent;color:var(--muted);cursor:pointer;font-size:13px;font-weight:600}
+.chips button[aria-pressed="true"]{background:var(--accent-soft);color:var(--fg);border-color:var(--accent)}
+
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:24px;align-items:start}
+@media (max-width:899px){
+  .split{grid-template-columns:minmax(0,1fr)}
+  .split[data-view="list"] #detail{display:none}
+  .split[data-view="detail"] #list{display:none}
+}
+@media (min-width:900px){.only-narrow{display:none!important}}
+.list{display:grid;gap:8px;min-width:0}
+.month{font:500 12px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:14px 0 2px}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;text-align:left;width:100%;padding:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;cursor:pointer}
+.row:hover{border-color:var(--muted)}
+.row.on{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.row-b{display:flex;flex-direction:column;gap:4px;min-width:0}
+.row-t{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-s{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-p{display:flex;align-items:center;gap:8px;font:400 12px var(--mono);color:var(--muted)}
+.row-p .bar{flex:1;max-width:140px}
+.xpchip{font-size:12px;padding:3px 8px;border-radius:5px;background:var(--xp-soft);color:var(--xp);white-space:nowrap}
+
+.cover{position:relative;display:block;width:60px;aspect-ratio:3/4;border-radius:7px;overflow:hidden;background:var(--surface-2);flex:none}
+.cover svg,.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.cover-k{position:absolute;left:5px;bottom:5px;color:#fff;opacity:.85;display:flex;z-index:2}
+.cover.big{width:min(150px,38vw);border-radius:10px}
+.cover-t{position:absolute;left:10px;right:10px;top:12px;font:800 clamp(20px,5vw,26px)/.95 var(--display);letter-spacing:.02em;text-transform:uppercase;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,.45);display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.cover.sm{width:30px;border-radius:4px}
+.cover.sm .cover-k{display:none}
+.cover::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.3),transparent 50%);pointer-events:none;z-index:1}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:22px;min-width:0}
+.d-head{display:flex;gap:18px;align-items:flex-start;min-width:0}
+.d-meta{min-width:0;display:grid;gap:8px}
+.d-meta h2{margin:0;font:800 clamp(28px,6vw,38px)/.98 var(--display);letter-spacing:.01em;text-transform:uppercase;overflow-wrap:anywhere;text-wrap:balance}
+.d-sub{color:var(--muted);font-size:14px}
+.badge{display:inline-flex;align-items:center;gap:6px;font:500 12px var(--mono);color:var(--muted)}
+.badge.ok{color:var(--accent)}
+.effort{display:flex;gap:6px;flex-wrap:wrap}
+.effort button{min-height:34px;padding:0 10px;border:1px solid var(--line);background:transparent;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+.effort button[aria-pressed="true"]{border-color:var(--xp-fill);background:var(--xp-soft);color:var(--fg)}
+.effort button span{font:400 11px var(--mono);margin-left:4px;color:var(--xp)}
+.sec h3{margin:0 0 10px;font:800 16px var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.blurb{margin:0}
+.facts{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 16px;margin:12px 0 0;font-size:14px}
+.facts dt{color:var(--muted)}
+.facts dd{margin:0;overflow-wrap:anywhere}
+.skel{height:14px;border-radius:4px;background:linear-gradient(90deg,var(--surface-2),var(--line),var(--surface-2));background-size:200% 100%;animation:sh 1.4s linear infinite;margin-bottom:8px}
+@keyframes sh{to{background-position:-200% 0}}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.steps li{display:flex;align-items:flex-start;gap:12px;padding:8px 4px;min-height:44px}
+.steps input[type=checkbox]{width:22px;height:22px;margin:1px 0 0;accent-color:var(--accent);flex:none}
+.steps label{flex:1;min-width:0;overflow-wrap:anywhere;cursor:pointer}
+.steps li.done label{color:var(--muted);text-decoration:line-through}
+.addstep{display:flex;gap:8px;margin-top:8px}
+.addstep input{flex:1;min-width:0;min-height:44px;padding:0 12px;background:var(--bg);border:1px solid var(--line);border-radius:8px}
+textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px solid var(--line);border-radius:10px;resize:vertical}
+.post-row{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px}
+.timeline{list-style:none;margin:16px 0 0;padding:0 0 0 18px;border-left:2px solid var(--line);display:grid;gap:14px}
+.timeline li{position:relative}
+.timeline li::before{content:"";position:absolute;left:-24px;top:7px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--surface)}
+.timeline time{display:block;font:400 12px var(--mono);color:var(--muted)}
+.timeline p{margin:2px 0 0;overflow-wrap:anywhere;white-space:pre-wrap}
+.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.cover-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--muted)}
+.cover-tools input[type=file]{max-width:100%;font-size:13px}
+.note{font-size:13px;color:var(--muted);margin:0}
+.note.err{color:var(--danger)}
+.empty{border:1px dashed var(--line);border-radius:12px;padding:20px;display:grid;gap:12px;color:var(--muted)}
+.empty h3{margin:0;font:800 20px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--fg)}
+.ghost{position:relative;opacity:.9;pointer-events:none}
+.ghost .tagx{position:absolute;right:10px;top:-9px;background:var(--fg);color:var(--bg);font:500 11px var(--mono);padding:2px 8px;border-radius:4px;letter-spacing:.08em;z-index:3}
+.starters{display:flex;gap:8px;flex-wrap:wrap}
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--line);display:grid;gap:12px;font-size:12px;color:var(--muted)}
+.footer .row2{display:flex;gap:8px 12px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.footer .tools{display:flex;gap:8px;flex-wrap:wrap}
+.credits{margin:0;line-height:1.6}
+.mono-s{font-family:var(--mono)}
+
+.overlay{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;background:rgba(6,12,16,.72);padding-block:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.cel-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:28px 24px;text-align:center;display:grid;gap:12px;animation:pop .45s cubic-bezier(.2,1.2,.3,1)}
+@keyframes pop{from{opacity:0;transform:scale(.88)}}
+.cel-kicker{margin:0;font:500 12px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--xp)}
+.cel-card h2{margin:0;font:800 30px/1 var(--display);text-transform:uppercase;overflow-wrap:anywhere;text-wrap:balance}
+.cel-xp{font:800 72px/1 var(--display);color:var(--xp-fill)}
+.cel-lv{font:700 20px var(--display);letter-spacing:.08em;text-transform:uppercase}
+.cel-lv.up{font-size:34px;color:var(--accent);animation:pop .6s .2s both cubic-bezier(.2,1.2,.3,1)}
+.cel-card .bar{margin-block:4px}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hud">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>
+      Sidequest Ledger
+    </div>
+    <div class="score" id="score">
+      <div class="lv"><small>LEVEL</small><b id="lvNum">1</b></div>
+      <div class="xpcol">
+        <div class="rank" id="rank">Newcomer</div>
+        <div class="bar" role="progressbar" aria-label="Progress to next level" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="xpBar"><i id="xpFill"></i></div>
+        <div class="xpnums mono"><span id="xpNow">0 XP</span><span id="xpNext">100 XP to level 2</span></div>
+      </div>
+    </div>
+    <div class="tally" id="tally"></div>
+  </header>
+
+  <section class="adder" aria-label="Add a quest">
+    <div class="seg" role="radiogroup" aria-label="What are you adding?" id="seg"></div>
+    <div class="field">
+      <input id="addInput" type="text" role="combobox" aria-expanded="false" aria-controls="acList" aria-autocomplete="list" autocomplete="off" autocapitalize="sentences" spellcheck="false" placeholder="Add a movie, game, place or task">
+      <button class="btn primary" id="addBtn" type="button">Add</button>
+      <ul class="ac" id="acList" role="listbox" hidden></ul>
+    </div>
+    <p class="hint" id="hint"></p>
+  </section>
+
+  <div class="bar-row">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="chips" id="chips" role="group" aria-label="Filter by type"></div>
+  </div>
+
+  <main class="split" id="split" data-view="list">
+    <section class="list" id="list" aria-label="Quests"></section>
+    <aside id="detail" aria-label="Quest details"></aside>
+  </main>
+
+  <footer class="footer">
+    <div class="row2">
+      <span id="sync" role="status" class="mono-s">Saved in this browser</span>
+      <span id="flash" role="status" class="mono-s"></span>
+      <span class="tools">
+        <button type="button" class="btn quiet small" id="exportBtn">Export backup</button>
+        <label class="btn quiet small" for="importFile" style="cursor:pointer">Import backup</label>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </span>
+    </div>
+    <p class="credits" id="credits"></p>
+  </footer>
+</div>
+
+<div class="overlay" id="celebrate" role="dialog" aria-modal="true" aria-labelledby="celTitle" hidden>
+  <div class="cel-card">
+    <p class="cel-kicker" id="celKicker">Quest complete</p>
+    <h2 id="celTitle"></h2>
+    <div class="cel-xp mono" id="celXp">+0</div>
+    <div class="cel-lv" id="celLv"></div>
+    <div class="bar"><i id="celBar"></i></div>
+    <p class="note" id="celMeta"></p>
+    <button class="btn gold" id="celBtn" type="button">Keep going</button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* =====================================================================
+   SETTINGS
+   TMDB_KEY: your TMDB "API Key (v3)". Movie search, posters and details.
+   RAWG_KEY: your RAWG key. Leave '' for now. Game search then falls back
+             to Wikipedia. Paste the key between the quotes to switch on
+             RAWG game covers and details.
+   Both keys are visible to anyone who views this page's source.
+   ===================================================================== */
+var TMDB_KEY='b664d624eba65e07153f430b86badf5a';
+var RAWG_KEY='';
+
+/* ---------- constants ---------- */
+var KINDS={movie:'Movie',game:'Game',place:'Place',task:'Task'};
+var SEG=['auto','movie','game','place','task'];
+var SEG_LABEL={auto:'Auto',movie:'Movies',game:'Games',place:'Places',task:'Tasks'};
+var PLACEHOLDER={auto:'Add a movie, game, place or task',movie:'Search a movie, e.g. Interstellar',game:'Search a game, e.g. Hollow Knight',place:'Search a city or destination, e.g. Kyoto',task:'Describe the work, e.g. Finish tax filing'};
+var SRC_LABEL={tmdb:'TMDB',rawg:'RAWG',wiki:'Wikipedia'};
+var EFFORT={quick:40,standard:100,epic:250};
+var EFFORT_LABEL={quick:'Quick',standard:'Standard',epic:'Epic'};
+var RANKS=['Newcomer','Scout','Explorer','Wanderer','Collector','Trailblazer','Veteran','Master','Legend','Mythic'];
+var UPDATE_XP=10, UPDATE_CAP=5, STEP_XP=5;
+var LS_KEY='sidequest-ledger-v1';
+var ICONS={
+  movie:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 10h4M3 14h4M17 10h4M17 14h4"/>',
+  game:'<path d="M7 8h10a4 4 0 0 1 4 4v1a3 3 0 0 1-5.2 2L14 13h-4l-1.8 2A3 3 0 0 1 3 13v-1a4 4 0 0 1 4-4z"/><path d="M8 10.5v3M6.5 12h3"/>',
+  place:'<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  task:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12.5l3 3 5-6"/>'
+};
+var STARTERS=[{t:'Interstellar',k:'movie'},{t:'Hollow Knight',k:'game'},{t:'Kyoto',k:'place'},{t:'Finish tax filing',k:'task'}];
+var PLACE_RE=/city|town|village|country|island|region|state|province|prefecture|mountain|lake|national park|capital|district|municipality|county|beach|river|valley|archipelago|peninsula|temple|castle|palace|monument|museum|park|falls|canyon|desert|bay|coast|territory|metropolis|commune|borough|neighbourhood|landmark|tourist|resort|cave|reef|heritage|ruins|bridge|tower|fort|garden|shrine|cathedral|waterfall|plateau|glacier|volcano/i;
+var NOT_PLACE_RE=/film|album|song|band|video game|novel|television|series|musician|singer|actor|actress|footballer|politician|footballer|company/i;
+
+/* ---------- state ---------- */
+var quests=new Map();
+var tab='active', filter='all', openId=null, view='list', addKind='auto';
+var drafts={}, stepDrafts={}, detailState={};
+var confirmDel=null, confirmTimer=null, flashTimer=null;
+var ac={items:[],index:-1,open:false,status:''}, acTimer=null, acCtl=null;
+
+function $(s){return document.querySelector(s)}
+function enc(s){return encodeURIComponent(s)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function fmtDate(ts){return new Date(ts).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'})}
+function fmtStamp(ts){return new Date(ts).toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}
+function plural(n,w){return n+' '+w+(n===1?'':'s')}
+function trimText(t,max){t=String(t||'').replace(/\s+/g,' ').trim();if(t.length<=max)return t;var cut=t.slice(0,max),i=cut.lastIndexOf('. ');return i>120?cut.slice(0,i+1):cut.replace(/\s+\S*$/,'')+'…'}
+function safeImg(u){return typeof u==='string'&&/^https:\/\/(image\.tmdb\.org|media\.rawg\.io|upload\.wikimedia\.org)\//.test(u)?u:null}
+function safeUrl(u){return typeof u==='string'&&/^https:\/\/([a-z.]*\.)?(themoviedb\.org|rawg\.io|wikipedia\.org)\//.test(u)?u:null}
+function norm(s){return String(s||'').toLowerCase().replace(/^the\s+/,'').replace(/[^a-z0-9]+/g,'')}
+async function jget(url,sig){
+  var r=await fetch(url,sig?{signal:sig}:undefined);
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+/* ---------- XP and levels ---------- */
+function qXp(q){
+  var u=Math.min(q.updates.length,UPDATE_CAP)*UPDATE_XP;
+  var h=q.highlights.filter(function(x){return x.done}).length*STEP_XP;
+  var d=q.status==='done'?(EFFORT[q.effort]||100):0;
+  return u+h+d;
+}
+function totalXp(){var t=0;quests.forEach(function(q){t+=qXp(q)});return t}
+function levelInfo(xp){
+  var n=1;while(xp>=50*(n+1)*n)n++;
+  var floor=50*n*(n-1), next=50*(n+1)*n;
+  return {n:n,floor:floor,next:next,pct:Math.round((xp-floor)/(next-floor)*100)};
+}
+function rankName(n){return RANKS[Math.min(n-1,RANKS.length-1)]}
+
+/* ---------- generated cover art (fallback under real images) ---------- */
+function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return h>>>0}
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;var t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function hsl(h,s,l){
+  s/=100;l/=100;var k=function(n){return(n+h/30)%12},a=s*Math.min(l,1-l);
+  var f=function(n){var v=l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return Math.round(255*v).toString(16).padStart(2,'0')};
+  return '#'+f(0)+f(8)+f(4);
+}
+function autoColors(title){var r=rng(hash(title));var h=Math.floor(r()*360);return [hsl(h,50,20),hsl((h+40+Math.floor(r()*60))%360,62,40)]}
+function coverSvg(q){
+  var cols=autoColors(q.title);
+  var r=rng(hash(q.title+q.kind)), gid='g'+hash((q.id||'')+q.title+(q.kind||'')), art='', i, j;
+  if(q.kind==='movie'){
+    art+='<rect width="300" height="44" fill="#000" opacity=".28"/><rect y="356" width="300" height="44" fill="#000" opacity=".28"/>';
+    for(i=14;i<400;i+=34){art+='<rect x="10" y="'+i+'" width="12" height="18" rx="3" fill="#fff" opacity=".16"/><rect x="278" y="'+i+'" width="12" height="18" rx="3" fill="#fff" opacity=".16"/>'}
+    art+='<circle cx="'+(110+r()*80).toFixed(0)+'" cy="'+(150+r()*60).toFixed(0)+'" r="'+(70+r()*35).toFixed(0)+'" fill="#fff" opacity=".1"/>';
+  }else if(q.kind==='game'){
+    for(j=0;j<9;j++){for(i=0;i<5;i++){if(r()>.5){var y=60+j*24;art+='<rect x="'+(30+i*24)+'" y="'+y+'" width="22" height="22" fill="#fff" opacity=".2"/><rect x="'+(30+(9-i)*24)+'" y="'+y+'" width="22" height="22" fill="#fff" opacity=".2"/>'}}}
+    for(i=0;i<6;i++){art+='<rect x="'+(30+i*24)+'" y="330" width="16" height="16" fill="#fff" opacity="'+(i<3?.35:.12)+'"/>'}
+  }else if(q.kind==='place'){
+    var cx=120+r()*60, cy=150+r()*100, k=3+Math.floor(r()*3), ph=r()*6.28;
+    for(i=1;i<=9;i++){
+      var rad=16+i*20, amp=5+i*1.6, d='';
+      for(j=0;j<=64;j++){var th=j/64*6.2832, rr=rad+amp*Math.sin(k*th+ph+i*.3);d+=(j?'L':'M')+(cx+rr*Math.cos(th)).toFixed(1)+' '+(cy+rr*Math.sin(th)*1.15).toFixed(1)}
+      art+='<path d="'+d+'Z" fill="none" stroke="#fff" stroke-width="1.5" opacity=".22"/>';
+    }
+    art+='<circle cx="'+cx.toFixed(0)+'" cy="'+cy.toFixed(0)+'" r="5" fill="#fff" opacity=".7"/>';
+  }else{
+    for(i=64;i<400;i+=30){art+='<line x1="0" x2="300" y1="'+i+'" y2="'+i+'" stroke="#fff" stroke-width="1" opacity=".12"/>'}
+    art+='<path d="M70 240L128 298L238 150" fill="none" stroke="#fff" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity=".26"/>';
+  }
+  return '<svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="'+cols[0]+'"/><stop offset="1" stop-color="'+cols[1]+'"/></linearGradient></defs><rect width="300" height="400" fill="url(#'+gid+')"/>'+art+'</svg>';
+}
+function kindIcon(k,sz){sz=sz||18;return '<svg width="'+sz+'" height="'+sz+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(ICONS[k]||ICONS.task)+'</svg>'}
+function thumb(q,big,small){
+  var src=(q.cover&&/^data:image\/jpeg;base64,/.test(q.cover))?q.cover:safeImg(q.img);
+  var img=src?'<img src="'+esc(src)+'" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">':'';
+  return '<span class="cover'+(big?' big':'')+(small?' sm':'')+'">'+coverSvg(q)+img+(big&&!src?'<span class="cover-t">'+esc(q.title)+'</span>':'')+'<span class="cover-k">'+kindIcon(q.kind,big?20:14)+'</span></span>';
+}
+
+/* ---------- storage (this browser) ---------- */
+function normalize(d,id){
+  var q=clone(d);q.id=id;q.title=String(q.title||'Untitled');q.kind=KINDS[q.kind]?q.kind:'task';q.sub=q.sub||'';
+  q.status=q.status==='done'?'done':'active';q.created=q.created||Date.now();
+  q.updates=Array.isArray(q.updates)?q.updates:[];q.highlights=Array.isArray(q.highlights)?q.highlights:[];q.facts=Array.isArray(q.facts)?q.facts:[];
+  q.effort=EFFORT[q.effort]?q.effort:'standard';return q;
+}
+function flash(msg){var el=$('#flash');el.textContent=msg;clearTimeout(flashTimer);flashTimer=setTimeout(function(){el.textContent=''},5000)}
+function saveLocal(){
+  try{localStorage.setItem(LS_KEY,JSON.stringify(Array.from(quests.values())));$('#sync').textContent='Saved in this browser'}
+  catch(e){$('#sync').textContent='Could not save here. Use Export backup.'}
+}
+function loadLocal(){
+  try{var raw=localStorage.getItem(LS_KEY);if(raw){JSON.parse(raw).forEach(function(d){if(d&&d.id)quests.set(d.id,normalize(d,d.id))})}}catch(e){}
+}
+function exportData(){
+  var payload={app:'sidequest-ledger',version:1,exported:new Date().toISOString(),quests:Array.from(quests.values())};
+  var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='sidequest-ledger-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
+}
+function importData(file){
+  if(!file)return;
+  file.text().then(function(txt){
+    var d=JSON.parse(txt), arr=Array.isArray(d)?d:d.quests, n=0;
+    if(!Array.isArray(arr))throw new Error('bad');
+    arr.forEach(function(q){if(q&&q.id&&q.title){quests.set(q.id,normalize(q,q.id));n++}});
+    saveLocal();renderAll();flash('Imported '+plural(n,'quest')+'.');
+  }).catch(function(){flash('That file is not a Sidequest backup.')});
+}
+
+/* ---------- changing quests ---------- */
+function mutate(id,fn,opts){
+  var cur=quests.get(id);if(!cur)return;
+  var before=totalXp(), q=clone(cur);fn(q);quests.set(id,q);
+  var after=totalXp();saveLocal();renderAll();
+  feedback(before,after,opts?{completed:opts.completed,q:q}:null);
+}
+function addQuest(p){
+  var title=String(p.title||'').trim();if(!title)return;
+  var dup=null;quests.forEach(function(q){if(q.status!=='done'&&q.title.toLowerCase()===title.toLowerCase())dup=q});
+  if(dup){openId=dup.id;tab='active';filter='all';$('#addInput').value='';closeAc();renderAll();flash('Already on your list.');return}
+  var id='q'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  var q=normalize({title:title,sub:p.sub||'',kind:p.kind||'task',auto:!!p.auto,verified:!!p.verified,src:p.src||'',srcId:p.srcId||'',img:safeImg(p.img),url:safeUrl(p.url),status:'active',created:Date.now(),updates:[],highlights:[],facts:[],effort:'standard',cover:null,blurb:''},id);
+  quests.set(id,q);saveLocal();openId=id;tab='active';filter='all';
+  $('#addInput').value='';closeAc();renderAll();
+  if(q.src)loadDetails(id);
+  else if(q.kind!=='task'||q.auto)lookupBest(id,false);
+}
+function feedback(before,after,o){
+  var lb=levelInfo(before).n, la=levelInfo(after).n;
+  if(o&&o.completed&&after>before){showCelebrate({type:'complete',title:o.q.title,before:before,after:after,q:o.q})}
+  else if(la>lb){showCelebrate({type:'level',title:'Level up',before:before,after:after})}
+  else if(after>before){floatXp(after-before)}
+}
+function floatXp(n){
+  var el=document.createElement('span');el.className='float-xp';el.textContent='+'+n+' XP';
+  $('#score').appendChild(el);setTimeout(function(){el.remove()},1500);
+}
+
+/* ---------- data sources: TMDB, RAWG, Wikipedia, Wikivoyage ---------- */
+var WIKI='https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1';
+async function wikiSearch(q,o){
+  var url=WIKI+'&prop=pageimages%7Cdescription&piprop=thumbnail&pithumbsize=400'+(o.prefix?'&generator=prefixsearch&gpssearch='+enc(q)+'&gpslimit=8':'&generator=search&gsrsearch='+enc(q)+'&gsrlimit=8');
+  var d=await jget(url,o.sig);
+  var pages=Object.values((d.query&&d.query.pages)||{}).sort(function(a,b){return (a.index||0)-(b.index||0)});
+  return pages.map(function(p){return {title:p.title,sub:p.description||'',img:p.thumbnail?p.thumbnail.source:null,src:'wiki',srcId:p.title,url:'https://en.wikipedia.org/wiki/'+enc(p.title.replace(/ /g,'_'))}});
+}
+async function searchMovies(q,sig){
+  if(TMDB_KEY){
+    var d=await jget('https://api.themoviedb.org/3/search/movie?include_adult=false&api_key='+enc(TMDB_KEY)+'&query='+enc(q),sig);
+    return (d.results||[]).slice(0,6).map(function(m){return {kind:'movie',title:m.title,sub:(m.release_date||'').slice(0,4),img:m.poster_path?'https://image.tmdb.org/t/p/w342'+m.poster_path:null,src:'tmdb',srcId:String(m.id),url:'https://www.themoviedb.org/movie/'+m.id}});
+  }
+  var r=await wikiSearch(q+' film',{sig:sig});
+  return r.filter(function(x){return /film/i.test(x.sub)}).map(function(x){x.kind='movie';return x});
+}
+async function searchGames(q,sig){
+  if(RAWG_KEY){
+    var d=await jget('https://api.rawg.io/api/games?key='+enc(RAWG_KEY)+'&page_size=6&search='+enc(q),sig);
+    return (d.results||[]).slice(0,6).map(function(g){
+      var yr=(g.released||'').slice(0,4), gen=(g.genres&&g.genres[0])?g.genres[0].name:'';
+      return {kind:'game',title:g.name,sub:[yr,gen].filter(Boolean).join(' · '),img:g.background_image||null,src:'rawg',srcId:String(g.id),url:g.slug?'https://rawg.io/games/'+g.slug:null};
+    });
+  }
+  var r=await wikiSearch(q+' video game',{sig:sig});
+  return r.filter(function(x){return /video game/i.test(x.sub)}).map(function(x){x.kind='game';return x});
+}
+async function searchPlaces(q,sig){
+  var a=await wikiSearch(q,{prefix:true,sig:sig}), keep=function(x){return PLACE_RE.test(x.sub)&&!NOT_PLACE_RE.test(x.sub)};
+  var out=a.filter(keep);
+  if(out.length<3){
+    try{var b=await wikiSearch(q,{sig:sig});b.filter(keep).forEach(function(x){if(!out.some(function(y){return y.title===x.title}))out.push(x)})}catch(e){if(e&&e.name==='AbortError')throw e}
+  }
+  return out.slice(0,6).map(function(x){x.kind='place';return x});
+}
+async function searchAll(q,kind,sig){
+  var jobs=kind==='movie'?[searchMovies]:kind==='game'?[searchGames]:kind==='place'?[searchPlaces]:[searchMovies,searchGames,searchPlaces];
+  var res=await Promise.allSettled(jobs.map(function(f){return f(q,sig)}));
+  if(sig&&sig.aborted){var e=new Error('aborted');e.name='AbortError';throw e}
+  var ok=res.filter(function(r){return r.status==='fulfilled'});
+  if(!ok.length)throw new Error('all sources failed');
+  var lists=ok.map(function(r){return r.value});
+  if(kind==='auto')lists=lists.map(function(l){return l.slice(0,3)});
+  return [].concat.apply([],lists).slice(0,8);
+}
+async function voyageSights(title){
+  try{
+    var d=await jget('https://en.wikivoyage.org/w/api.php?action=parse&format=json&origin=*&redirects=1&prop=wikitext&page='+enc(title));
+    var wt=(d.parse&&d.parse.wikitext&&d.parse.wikitext['*'])||'';
+    var m=wt.match(/\n==\s*See\s*==[ \t]*\n([\s\S]*?)(?=\n==[^=]|$)/);
+    if(!m)return [];
+    var sec=m[1], names=[], x;
+    var re=/\|\s*name\s*=\s*([^|\n}]+)/g;
+    while((x=re.exec(sec)))names.push(x[1]);
+    if(!names.length){var re2=/^\*+\s*'*\[\[([^\]|#]+)(?:\|([^\]]+))?\]\]/gm;while((x=re2.exec(sec)))names.push(x[2]||x[1])}
+    var seen={}, out=[];
+    names.forEach(function(n){n=n.replace(/\[\[|\]\]|'''?|<[^>]+>/g,'').replace(/\s+/g,' ').trim();var k=n.toLowerCase();if(n&&!seen[k]){seen[k]=1;out.push(n)}});
+    return out.slice(0,7);
+  }catch(e){return []}
+}
+async function fetchDetails(q){
+  if(q.src==='tmdb'){
+    var d=await jget('https://api.themoviedb.org/3/movie/'+enc(q.srcId)+'?append_to_response=credits&api_key='+enc(TMDB_KEY));
+    var crew=(d.credits&&d.credits.crew)||[], cast=(d.credits&&d.credits.cast)||[];
+    var dir=crew.filter(function(c){return c.job==='Director'}).map(function(c){return c.name}).slice(0,2).join(', ');
+    var lead=cast.slice(0,3).map(function(c){return c.name}).join(', ');
+    var gen=(d.genres||[]).map(function(g){return g.name}).slice(0,3).join(', ');
+    var rt=d.runtime||0;
+    return {
+      sub:[(d.release_date||'').slice(0,4),dir].filter(Boolean).join(' · '),
+      blurb:trimText(d.overview,420),
+      facts:[dir&&{k:'Director',v:dir},rt&&{k:'Runtime',v:Math.floor(rt/60)+'h '+(rt%60)+'m'},gen&&{k:'Genre',v:gen},lead&&{k:'Lead cast',v:lead}].filter(Boolean),
+      highlights:[],effort:(rt&&rt<=110)?'quick':'standard',
+      img:d.poster_path?'https://image.tmdb.org/t/p/w342'+d.poster_path:null
+    };
+  }
+  if(q.src==='rawg'){
+    var g=await jget('https://api.rawg.io/api/games/'+enc(q.srcId)+'?key='+enc(RAWG_KEY));
+    var devs=(g.developers||[]).map(function(x){return x.name}).slice(0,2).join(', ');
+    var plats=(g.platforms||[]).map(function(p){return p.platform.name}).slice(0,4).join(', ');
+    var gens=(g.genres||[]).map(function(x){return x.name}).slice(0,3).join(', ');
+    var pt=g.playtime||0;
+    return {
+      sub:[(g.released||'').slice(0,4),devs].filter(Boolean).join(' · '),
+      blurb:trimText(g.description_raw,420),
+      facts:[devs&&{k:'Developer',v:devs},plats&&{k:'Platforms',v:plats},gens&&{k:'Genre',v:gens},pt&&{k:'Time to beat',v:'about '+pt+' hours'}].filter(Boolean),
+      highlights:[],effort:pt&&pt<=3?'quick':(pt>30?'epic':'standard'),
+      img:g.background_image||null
+    };
+  }
+  var w=await jget(WIKI+'&prop=extracts%7Cdescription%7Cpageimages&exintro=1&explaintext=1&exsentences=3&piprop=thumbnail&pithumbsize=500&titles='+enc(q.srcId));
+  var p=Object.values((w.query&&w.query.pages)||{})[0];
+  if(!p||p.missing!==undefined)throw new Error('missing');
+  return {
+    blurb:trimText(p.extract,420),
+    facts:[p.description&&{k:'About',v:p.description}].filter(Boolean),
+    highlights:q.kind==='place'?await voyageSights(p.title):[],
+    effort:'standard',img:p.thumbnail?p.thumbnail.source:null,
+    url:'https://en.wikipedia.org/wiki/'+enc(p.title.replace(/ /g,'_'))
+  };
+}
+function applyDetails(q,r){
+  q.verified=true;
+  if(typeof r.sub==='string'&&r.sub)q.sub=r.sub;
+  if(r.blurb)q.blurb=r.blurb;
+  if(r.facts&&r.facts.length)q.facts=r.facts;
+  if(r.highlights&&r.highlights.length&&!q.highlights.length)q.highlights=r.highlights.map(function(t){return {t:t,done:false}});
+  if(EFFORT[r.effort]&&q.status==='active'&&!q.effortSet)q.effort=r.effort;
+  if(safeImg(r.img)&&!q.img)q.img=r.img;
+  if(safeUrl(r.url)&&!q.url)q.url=r.url;
+}
+async function loadDetails(id){
+  var q0=quests.get(id);if(!q0)return;
+  detailState[id]='loading';renderDetail();
+  var r;
+  try{r=await fetchDetails(q0)}catch(e){detailState[id]='error';renderDetail();return}
+  delete detailState[id];
+  if(!quests.get(id))return;
+  mutate(id,function(q){applyDetails(q,r)});
+}
+async function lookupBest(id,force){
+  var q0=quests.get(id);if(!q0)return;
+  detailState[id]='loading';renderDetail();
+  var items;
+  try{items=await searchAll(q0.title,q0.auto?'auto':q0.kind)}catch(e){detailState[id]='error';renderDetail();return}
+  var pick=items.filter(function(x){return norm(x.title)===norm(q0.title)})[0]||(force?items[0]:null);
+  if(!pick){detailState[id]='none';renderDetail();return}
+  if(!quests.get(id))return;
+  mutate(id,function(q){
+    q.kind=pick.kind||q.kind;q.auto=false;q.src=pick.src;q.srcId=pick.srcId;q.title=pick.title;q.sub=pick.sub||q.sub;
+    if(safeImg(pick.img))q.img=pick.img;if(safeUrl(pick.url))q.url=pick.url;
+  });
+  loadDetails(id);
+}
+
+/* ---------- autocomplete ---------- */
+function setHint(){
+  var parts=['Pick a type, then start typing. Posters and details come from TMDB'+(RAWG_KEY?', RAWG':'')+' and Wikipedia.'];
+  if(!RAWG_KEY)parts.push('Game search uses Wikipedia until a RAWG key is added in the settings at the top of the script.');
+  $('#hint').textContent=parts.join(' ');
+  var c='Movie data and posters from <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>. This product uses the TMDB API but is not endorsed or certified by TMDB. ';
+  if(RAWG_KEY)c+='Game data from <a href="https://rawg.io" target="_blank" rel="noopener">RAWG</a>. ';
+  c+='Places and summaries from <a href="https://en.wikipedia.org" target="_blank" rel="noopener">Wikipedia</a> and <a href="https://en.wikivoyage.org" target="_blank" rel="noopener">Wikivoyage</a> (CC BY-SA).';
+  $('#credits').innerHTML=c;
+}
+async function suggest(v){
+  if(acCtl)acCtl.abort();
+  acCtl=new AbortController();var ctl=acCtl;
+  ac.status='loading';ac.open=true;renderAc();
+  try{
+    var items=await searchAll(v,addKind,ctl.signal);
+    if(ctl!==acCtl)return;
+    ac.items=items;ac.index=-1;ac.status=items.length?'':'none';
+  }catch(e){
+    if(ctl!==acCtl||(e&&e.name==='AbortError'))return;
+    ac.items=[];ac.status='error';
+  }
+  renderAc();
+}
+
+/* ---------- rendering ---------- */
+function progress(q){
+  var n=q.highlights.length;if(!n)return null;
+  var d=q.highlights.filter(function(h){return h.done}).length;
+  return {d:d,n:n,pct:Math.round(d/n*100)};
+}
+function lastAct(q){var m=q.created;q.updates.forEach(function(u){if(u.ts>m)m=u.ts});return m}
+function visibleQuests(){
+  var arr=Array.from(quests.values()).filter(function(q){return (tab==='active')===(q.status!=='done')}).filter(function(q){return filter==='all'||q.kind===filter});
+  arr.sort(function(a,b){return tab==='active'?lastAct(b)-lastAct(a):(b.completed||0)-(a.completed||0)});
+  return arr;
+}
+function renderHud(){
+  var xp=totalXp(), L=levelInfo(xp);
+  $('#lvNum').textContent=L.n;$('#rank').textContent=rankName(L.n);
+  $('#xpFill').style.width=L.pct+'%';$('#xpBar').setAttribute('aria-valuenow',L.pct);
+  $('#xpNow').textContent=xp+' XP';$('#xpNext').textContent=(L.next-xp)+' XP to level '+(L.n+1);
+  var done=0,ups=0;quests.forEach(function(q){if(q.status==='done')done++;ups+=q.updates.length});
+  $('#tally').innerHTML='<span><b>'+done+'</b> quests completed</span><span><b>'+ups+'</b> updates logged</span><span><b>'+(quests.size-done)+'</b> in progress</span>';
+}
+function renderSeg(){
+  $('#seg').innerHTML=SEG.map(function(k){return '<button type="button" role="radio" aria-checked="'+(k===addKind)+'" data-act="seg" data-k="'+k+'">'+SEG_LABEL[k]+'</button>'}).join('');
+}
+function renderTabs(){
+  var a=0,d=0;quests.forEach(function(q){if(q.status==='done')d++;else a++});
+  $('#tabs').innerHTML='<button type="button" role="tab" aria-selected="'+(tab==='active')+'" data-act="tab" data-t="active">Active<span class="n">'+a+'</span></button><button type="button" role="tab" aria-selected="'+(tab==='done')+'" data-act="tab" data-t="done">History<span class="n">'+d+'</span></button>';
+  var f=['all','movie','game','place','task'];
+  $('#chips').innerHTML=f.map(function(k){return '<button type="button" aria-pressed="'+(k===filter)+'" data-act="filter" data-k="'+k+'">'+(k==='all'?'All':SEG_LABEL[k])+'</button>'}).join('');
+}
+function rowHtml(q){
+  var p=progress(q), sub;
+  if(q.status==='done')sub='<span class="row-p"><span>Completed '+fmtDate(q.completed||q.created)+'</span></span>';
+  else if(p)sub='<span class="row-p"><span class="bar teal thin"><i style="width:'+p.pct+'%"></i></span><span>'+p.d+'/'+p.n+'</span></span>';
+  else sub='<span class="row-p"><span>'+(q.updates.length?plural(q.updates.length,'update'):'Not started')+'</span></span>';
+  return '<button type="button" class="row'+(q.id===openId?' on':'')+'" data-act="open" data-id="'+q.id+'">'+thumb(q)+'<span class="row-b"><span class="row-t">'+esc(q.title)+'</span><span class="row-s">'+KINDS[q.kind]+(q.sub?' · '+esc(q.sub):'')+'</span>'+sub+'</span><span class="xpchip mono">'+qXp(q)+' XP</span></button>';
+}
+function ghostHtml(){
+  var g={id:'ghost',title:'Interstellar',kind:'movie'};
+  return '<div class="ghost"><span class="tagx">EXAMPLE</span><div class="row">'+thumb(g)+'<span class="row-b"><span class="row-t">Interstellar</span><span class="row-s">Movie · 2014 · Christopher Nolan</span><span class="row-p"><span class="bar teal thin"><i style="width:50%"></i></span><span>2/4</span></span></span><span class="xpchip mono">35 XP</span></div></div>';
+}
+function renderList(){
+  var el=$('#list'), arr=visibleQuests();
+  if(!arr.length){
+    if(tab==='done'){el.innerHTML='<div class="empty"><h3>Nothing finished yet</h3><p class="note" style="margin:0">Complete a quest and it lands here with the date and the XP it earned.</p></div>';return}
+    var anyActive=Array.from(quests.values()).some(function(q){return q.status!=='done'});
+    if(anyActive){el.innerHTML='<div class="empty"><p class="note" style="margin:0">No active quests of this type.</p></div>';return}
+    el.innerHTML='<div class="empty"><h3>Your ledger is empty</h3><p style="margin:0">Add something above. Each update you log earns XP, and finishing it earns more.</p>'+ghostHtml()+'<div class="starters">'+STARTERS.map(function(s){return '<button type="button" class="btn quiet" data-act="starter" data-t="'+esc(s.t)+'" data-k="'+s.k+'">'+kindIcon(s.k,16)+esc(s.t)+'</button>'}).join('')+'</div></div>';
+    return;
+  }
+  var html='',lastMonth='';
+  arr.forEach(function(q){
+    if(tab==='done'){
+      var m=new Date(q.completed||q.created).toLocaleDateString(undefined,{month:'long',year:'numeric'});
+      if(m!==lastMonth){html+='<div class="month">'+esc(m)+'</div>';lastMonth=m}
+    }
+    html+=rowHtml(q);
+  });
+  el.innerHTML=html;
+}
+function stepsLabel(k){return k==='place'?'Places to see':(k==='game'?'Milestones':'Steps')}
+function detailHtml(q){
+  var st=detailState[q.id], active=q.status!=='done', p=progress(q), h='';
+  h+='<button type="button" class="btn quiet only-narrow" data-act="back" style="justify-self:start">← All quests</button>';
+  h+='<div class="d-head">'+thumb(q,true)+'<div class="d-meta"><h2>'+esc(q.title)+'</h2><div class="d-sub">'+KINDS[q.kind]+(q.sub?' · '+esc(q.sub):'')+'</div>';
+  h+=q.kind==='task'&&!q.auto?'<span class="badge">Your own task</span>':(q.verified?'<span class="badge ok">✓ Matched on '+(SRC_LABEL[q.src]||'the web')+'</span>':'<span class="badge">Custom entry</span>');
+  if(active){
+    h+='<div class="effort" role="group" aria-label="Effort">'+Object.keys(EFFORT).map(function(k){return '<button type="button" data-act="effort" data-e="'+k+'" aria-pressed="'+(q.effort===k)+'">'+EFFORT_LABEL[k]+'<span>'+EFFORT[k]+' XP</span></button>'}).join('')+'</div>';
+  }else h+='<span class="badge">'+EFFORT_LABEL[q.effort]+' · '+EFFORT[q.effort]+' XP on completion</span>';
+  h+='</div></div>';
+
+  if(q.kind!=='task'||q.auto){
+    h+='<div class="sec">';
+    if(st==='loading')h+='<div class="skel" style="width:92%"></div><div class="skel" style="width:78%"></div><div class="skel" style="width:60%"></div><p class="note">Looking this up…</p>';
+    else if(q.blurb)h+='<p class="blurb">'+esc(q.blurb)+'</p>';
+    else h+='<p class="note">No details yet.</p>';
+    if(st==='error')h+='<p class="note err">Could not reach the data source. Check your connection and try again.</p>';
+    if(st==='none')h+='<p class="note">No exact match found. It stays a custom entry. You can pick the closest result instead.</p>';
+    if(st!=='loading')h+='<button type="button" class="btn quiet small" data-act="details" style="margin-top:8px">'+(q.src?'Refresh details':'Find details')+'</button>';
+    if(q.facts.length)h+='<dl class="facts">'+q.facts.map(function(f){return '<dt>'+esc(f.k)+'</dt><dd>'+esc(f.v)+'</dd>'}).join('')+'</dl>';
+    var u=safeUrl(q.url);if(u)h+='<p class="note" style="margin-top:10px"><a href="'+esc(u)+'" target="_blank" rel="noopener">Read more on '+(SRC_LABEL[q.src]||'the web')+' ↗</a></p>';
+    h+='</div>';
+  }
+
+  h+='<div class="sec"><h3>'+stepsLabel(q.kind)+(p?' · '+p.d+'/'+p.n:'')+'</h3>';
+  if(p)h+='<div class="bar teal thin" style="margin-bottom:8px"><i style="width:'+p.pct+'%"></i></div>';
+  if(q.highlights.length)h+='<ul class="steps">'+q.highlights.map(function(s,i){return '<li class="'+(s.done?'done':'')+'"><input type="checkbox" id="st'+i+'" data-act="step" data-i="'+i+'"'+(s.done?' checked':'')+'><label for="st'+i+'">'+esc(s.t)+'</label></li>'}).join('')+'</ul>';
+  else h+='<p class="note">Break it into steps to see progress. Each step you tick is +'+STEP_XP+' XP.</p>';
+  h+='<form class="addstep" data-form="step"><input id="stepInput" type="text" placeholder="Add a step" aria-label="Add a step" value="'+esc(stepDrafts[q.id]||'')+'"><button class="btn" type="submit">Add</button></form></div>';
+
+  h+='<div class="sec"><h3>Updates · '+q.updates.length+'</h3>';
+  h+='<textarea id="updText" placeholder="What did you do or find out? e.g. Finished act two, the soundtrack is wild." aria-label="Progress update">'+esc(drafts[q.id]||'')+'</textarea>';
+  h+='<div class="post-row"><span class="note">'+(q.updates.length<UPDATE_CAP?'+'+UPDATE_XP+' XP per update, up to '+UPDATE_CAP+' per quest':'XP for updates is capped on this quest')+'</span><button type="button" class="btn primary" data-act="post">Post update</button></div>';
+  if(q.updates.length)h+='<ul class="timeline">'+q.updates.slice().reverse().map(function(u){return '<li><time>'+fmtStamp(u.ts)+'</time><p>'+esc(u.t)+'</p></li>'}).join('')+'</ul>';
+  h+='</div>';
+
+  h+='<div class="sec"><h3>Cover</h3><div class="cover-tools"><label for="coverFile">Use your own image</label><input type="file" id="coverFile" accept="image/*">'+(q.cover?'<button type="button" class="btn quiet small" data-act="cover-remove">Remove image</button>':'')+'</div></div>';
+
+  h+='<div class="actions">';
+  if(active)h+='<button type="button" class="btn gold" data-act="complete">Complete quest · +'+EFFORT[q.effort]+' XP</button>';
+  else h+='<span class="note">Completed '+fmtDate(q.completed||q.created)+'</span><button type="button" class="btn quiet" data-act="reopen">Reopen</button>';
+  h+='<button type="button" class="btn quiet danger" data-act="delete">'+(confirmDel===q.id?'Click again to delete':'Delete')+'</button></div>';
+  return h;
+}
+function renderDetail(){
+  var el=$('#detail'), q=openId&&quests.get(openId);
+  var ae=document.activeElement, aid=ae&&ae.id, ss=ae&&ae.selectionStart, se=ae&&ae.selectionEnd;
+  if(!q){
+    el.innerHTML='<div class="empty"><h3>Pick a quest</h3><p style="margin:0">Details, steps and your update log show up here.</p></div>';
+    $('#split').setAttribute('data-view','list');return;
+  }
+  el.innerHTML='<div class="panel">'+detailHtml(q)+'</div>';
+  $('#split').setAttribute('data-view',view);
+  if(aid){var n=document.getElementById(aid);if(n){n.focus();try{if(ss!=null)n.setSelectionRange(ss,se)}catch(e){}}}
+}
+function renderAc(){
+  var ul=$('#acList'), inp=$('#addInput'), typed=inp.value.trim();
+  if(!ac.open||!typed||addKind==='task'){ul.hidden=true;inp.setAttribute('aria-expanded','false');return}
+  var h='';
+  if(ac.status==='loading')h+='<li class="state" role="presentation">Searching…</li>';
+  ac.items.forEach(function(it,i){
+    h+='<li role="option" id="ac'+i+'" data-act="pick" data-i="'+i+'" aria-selected="'+(i===ac.index)+'">'+thumb({id:'s'+i,title:it.title,kind:it.kind,img:it.img},false,true)+'<span class="grow"><span class="t">'+esc(it.title)+'</span><span class="s">'+KINDS[it.kind]+(it.sub?' · '+esc(it.sub):'')+'</span></span></li>';
+  });
+  var cu=ac.items.length;
+  if(ac.status==='none')h+='<li class="state" role="presentation">No match found.</li>';
+  if(ac.status==='error')h+='<li class="state" role="presentation">Could not reach the search sources.</li>';
+  h+='<li role="option" id="ac'+cu+'" data-act="pick" data-i="'+cu+'" aria-selected="'+(ac.index===cu)+'"><span class="grow"><span class="t">Add “'+esc(typed)+'” as typed</span><span class="s">Custom entry</span></span></li>';
+  ul.innerHTML=h;ul.hidden=false;inp.setAttribute('aria-expanded','true');
+  inp.setAttribute('aria-activedescendant',ac.index>=0?'ac'+ac.index:'');
+}
+function closeAc(){ac.open=false;ac.items=[];ac.index=-1;ac.status='';if(acCtl)acCtl.abort();clearTimeout(acTimer);renderAc()}
+function renderAll(){renderHud();renderTabs();renderList();renderDetail()}
+
+/* ---------- celebration ---------- */
+var celReturn=null;
+function showCelebrate(o){
+  var L0=levelInfo(o.before), L1=levelInfo(o.after), up=L1.n>L0.n, gain=o.after-o.before;
+  $('#celKicker').textContent=o.type==='complete'?(up?'Quest complete · level up':'Quest complete'):'Level up';
+  $('#celTitle').textContent=o.type==='complete'?o.title:'Level '+L1.n;
+  var lv=$('#celLv');lv.className='cel-lv'+(up?' up':'');lv.textContent='Level '+L1.n+' · '+rankName(L1.n);
+  $('#celMeta').textContent=(o.type==='complete'&&o.q?plural(o.q.updates.length,'update')+' logged · ':'')+(L1.next-o.after)+' XP to level '+(L1.n+1);
+  var bar=$('#celBar');bar.style.transition='none';bar.style.width=(up?0:L0.pct)+'%';
+  var xpEl=$('#celXp');xpEl.textContent='+0';
+  celReturn=document.activeElement;
+  $('#celebrate').hidden=false;$('#celBtn').focus();
+  void bar.offsetWidth;bar.style.transition='';
+  requestAnimationFrame(function(){bar.style.width=L1.pct+'%'});
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduce||gain<=0){xpEl.textContent='+'+gain;return}
+  var t0=performance.now();
+  (function tick(t){var k=Math.min(1,(t-t0)/700);xpEl.textContent='+'+Math.round(gain*k);if(k<1)requestAnimationFrame(tick)})(t0);
+}
+function closeCelebrate(){$('#celebrate').hidden=true;if(celReturn&&celReturn.focus)celReturn.focus()}
+
+/* ---------- own cover upload ---------- */
+async function handleCover(file){
+  if(!file||!openId)return;
+  try{
+    var bmp=await createImageBitmap(file), W=270, H=360, c=document.createElement('canvas');
+    c.width=W;c.height=H;var x=c.getContext('2d'), s=Math.max(W/bmp.width,H/bmp.height), w=bmp.width*s, h=bmp.height*s;
+    x.drawImage(bmp,(W-w)/2,(H-h)/2,w,h);
+    var url=c.toDataURL('image/jpeg',0.82);
+    mutate(openId,function(q){q.cover=url});
+  }catch(e){flash('Could not read that image. Try a JPEG or PNG.')}
+}
+
+/* ---------- events ---------- */
+function pickAc(i){
+  var typed=$('#addInput').value.trim();
+  if(i>=0&&i<ac.items.length){
+    var it=ac.items[i];
+    addQuest({title:it.title,sub:it.sub,kind:it.kind,verified:true,src:it.src,srcId:it.srcId,img:it.img,url:it.url});
+  }else addCustom(typed);
+}
+function addCustom(typed){
+  if(!typed)return;
+  if(addKind==='auto')addQuest({title:typed,kind:'task',auto:true});
+  else addQuest({title:typed,kind:addKind});
+}
+function postUpdate(){
+  var ta=$('#updText');if(!ta||!openId)return;
+  var t=ta.value.trim();if(!t)return;
+  drafts[openId]='';
+  mutate(openId,function(q){q.updates.push({t:t.slice(0,1000),ts:Date.now()})});
+}
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-act]');
+  if(!t){if(!e.target.closest('.field'))closeAc();return}
+  var a=t.getAttribute('data-act'), id=t.getAttribute('data-id');
+  if(a==='seg'){addKind=t.getAttribute('data-k');renderSeg();$('#addInput').placeholder=PLACEHOLDER[addKind];closeAc();
+    var v=$('#addInput').value.trim();if(v.length>=2&&addKind!=='task'){ac.open=true;suggest(v)}}
+  else if(a==='tab'){tab=t.getAttribute('data-t');view='list';renderTabs();renderList();renderDetail()}
+  else if(a==='filter'){filter=t.getAttribute('data-k');renderTabs();renderList()}
+  else if(a==='open'){openId=id;view='detail';confirmDel=null;renderList();renderDetail();window.scrollTo(0,0)}
+  else if(a==='back'){view='list';renderDetail()}
+  else if(a==='pick'){pickAc(+t.getAttribute('data-i'))}
+  else if(a==='starter'){addKind=t.getAttribute('data-k');renderSeg();var inp=$('#addInput');inp.placeholder=PLACEHOLDER[addKind];inp.value=t.getAttribute('data-t');inp.focus();
+    if(addKind!=='task'){ac.open=true;suggest(inp.value.trim())}}
+  else if(a==='post'){postUpdate()}
+  else if(a==='step'){var i=+t.getAttribute('data-i');mutate(openId,function(q){if(q.highlights[i])q.highlights[i].done=!q.highlights[i].done})}
+  else if(a==='effort'){var ef=t.getAttribute('data-e');mutate(openId,function(q){q.effort=ef;q.effortSet=true})}
+  else if(a==='complete'){mutate(openId,function(q){q.status='done';q.completed=Date.now()},{completed:true})}
+  else if(a==='reopen'){mutate(openId,function(q){q.status='active';q.completed=null})}
+  else if(a==='details'){var cq=quests.get(openId);if(cq){if(cq.src)loadDetails(openId);else lookupBest(openId,true)}}
+  else if(a==='cover-remove'){mutate(openId,function(q){q.cover=null})}
+  else if(a==='delete'){
+    if(confirmDel===openId){var did=openId;quests.delete(did);saveLocal();openId=null;view='list';confirmDel=null;renderAll()}
+    else{confirmDel=openId;clearTimeout(confirmTimer);confirmTimer=setTimeout(function(){confirmDel=null;renderDetail()},4000);renderDetail()}
+  }
+});
+document.addEventListener('submit',function(e){
+  var f=e.target.closest('[data-form="step"]');if(!f)return;
+  e.preventDefault();
+  var inp=$('#stepInput'), t=inp.value.trim();if(!t||!openId)return;
+  stepDrafts[openId]='';
+  mutate(openId,function(q){q.highlights.push({t:t.slice(0,140),done:false})});
+});
+document.addEventListener('input',function(e){
+  if(e.target.id==='updText'&&openId)drafts[openId]=e.target.value;
+  if(e.target.id==='stepInput'&&openId)stepDrafts[openId]=e.target.value;
+});
+document.addEventListener('change',function(e){
+  if(e.target.id==='coverFile'){handleCover(e.target.files&&e.target.files[0]);e.target.value=''}
+  if(e.target.id==='importFile'){importData(e.target.files&&e.target.files[0]);e.target.value=''}
+});
+document.addEventListener('keydown',function(e){
+  if(e.target.id==='updText'&&e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();postUpdate()}
+  if(e.key==='Escape'){if(!$('#celebrate').hidden)closeCelebrate();else closeAc()}
+});
+$('#celBtn').addEventListener('click',closeCelebrate);
+$('#celebrate').addEventListener('click',function(e){if(e.target===this)closeCelebrate()});
+$('#exportBtn').addEventListener('click',exportData);
+$('#addBtn').addEventListener('click',function(){
+  var v=$('#addInput').value.trim();
+  if(ac.index>=0&&ac.open)pickAc(ac.index);else addCustom(v);
+});
+$('#acList').addEventListener('mousedown',function(e){e.preventDefault()});
+var addInput=$('#addInput');
+addInput.addEventListener('input',function(){
+  var v=addInput.value.trim();clearTimeout(acTimer);ac.index=-1;
+  if(v.length<2||addKind==='task'){closeAc();return}
+  ac.open=true;ac.status='loading';ac.items=[];renderAc();
+  acTimer=setTimeout(function(){suggest(v)},350);
+});
+addInput.addEventListener('keydown',function(e){
+  var total=ac.items.length+1;
+  if(e.key==='ArrowDown'&&ac.open){e.preventDefault();ac.index=(ac.index+1)%total;renderAc()}
+  else if(e.key==='ArrowUp'&&ac.open){e.preventDefault();ac.index=ac.index<=0?total-1:ac.index-1;renderAc()}
+  else if(e.key==='Enter'){e.preventDefault();if(ac.open&&ac.index>=0)pickAc(ac.index);else addCustom(addInput.value.trim())}
+});
+addInput.addEventListener('blur',function(){setTimeout(function(){if(document.activeElement!==addInput){ac.open=false;renderAc()}},120)});
+addInput.addEventListener('focus',function(){if(addInput.value.trim().length>=2&&addKind!=='task'&&(ac.items.length||ac.status)){ac.open=true;renderAc()}});
+
+/* ---------- start ---------- */
+setHint();loadLocal();renderSeg();renderAll();
+})();
+</script>
+</body>
+</html>
