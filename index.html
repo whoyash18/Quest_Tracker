@@ -64,6 +64,9 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>
       Sidequest Ledger
     </div>
+    <button type="button" class="top-profile" id="topProfileBtn" aria-label="Open profile">
+      <span id="topAvatar"></span><span class="top-profile-name" id="topName"></span>
+    </button>
     </div>
     <div class="score" id="score">
       <div class="lv"><small>LEVEL</small><b id="lvNum">1</b></div>
@@ -130,10 +133,7 @@
       <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
     </button>
   </nav>
-  <div class="drawer-id">
-    <div id="drawerAvatar"></div>
-    <div class="drawer-account"><p class="drawer-name" id="drawerName"></p><span>Account</span></div>
-  </div>
+
 </aside>
 
 <!-- PROFILE PAGE: shown when the address ends in #profile. Email (read only), name, username, picture, and Sign out at the bottom centre. -->
@@ -717,8 +717,8 @@ function avatarHtml(size){
 function profMsg(t,isErr){var el=$('#profMsg');el.textContent=t||'';el.className='note'+(isErr?' err':'')}
 function renderChrome(){
   if(!user)return;
-  $('#drawerAvatar').innerHTML=avatarHtml('lg');
-  $('#drawerName').textContent=displayName();
+  $('#topAvatar').innerHTML=avatarHtml('lg');
+  $('#topName').textContent=displayName();
   $('#profAvatar').innerHTML=avatarHtml('xl');
   $('#avatarRemove').hidden=!profile.avatar;
   $('#profNote').hidden=profileMode!=='local';
@@ -849,6 +849,7 @@ $('#menuBtn').addEventListener('click',openDrawer);
 $('#drawerClose').addEventListener('click',function(){closeDrawer()});
 $('#scrim').addEventListener('click',function(){closeDrawer()});
 $('#aboutBtn').addEventListener('click',function(){closeDrawer(false);location.hash='profile'});
+$('#topProfileBtn').addEventListener('click',function(){location.hash='profile'});
 $('#profBack').addEventListener('click',goHome);
 $('#profSignOut').addEventListener('click',signOut);
 $('#profForm').addEventListener('submit',submitProfile);
