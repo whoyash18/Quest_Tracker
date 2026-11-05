@@ -475,7 +475,7 @@ var ac={items:[],index:-1,open:false,status:''}, acTimer=null, acCtl=null;
    sb = the Supabase client, user = who is signed in (null when signed out),
    pending = ids waiting to be saved (up) or removed (del) in the database,
    flushing/syncing = guards so two syncs never run at the same time. */
-var sb=null, user=null;
+var sb=null, user=null, syncErrorMessage='';
 var pending={up:{},del:{}}, flushing=false, syncing=false, pushTimer=null, retryTimer=null;
 
 function $(s){return document.querySelector(s)}
@@ -610,9 +610,8 @@ function schedulePush(){
 /* flush(): send queued changes to the database. Returns true on success.
    The ids are taken off the queue BEFORE sending, so an edit made while the request
    is in flight is queued again instead of being wiped. If the request fails, they go
-   back on the queue and are retried later. upsert = insert or update in one call;
-   user_id is filled in by the database, and the row-level-security rule you created
-   guarantees a person can only touch their own rows. */
+   back on the queue and are retried later. Always send the authenticated owner explicitly;
+   relying on a database default is fragile and was the source of the RLS insert failure. */
 async function flush(){
   if(!sb||!user)return false;
   if(flushing)return false;
@@ -624,12 +623,14 @@ async function flush(){
   savePending();
   try{
     var now=new Date().toISOString();
-    var rows=up.filter(function(id){return quests.has(id)}).map(function(id){return {id:id,data:quests.get(id),updated_at:now}});
+    var ownerId=user.id;
+    var rows=up.filter(function(id){return quests.has(id)}).map(function(id){return {id:id,user_id:ownerId,data:quests.get(id),updated_at:now}});
     if(rows.length){var r1=await sb.from('quests').upsert(rows,{onConflict:'id'});if(r1.error)throw r1.error}
-    if(del.length){var r2=await sb.from('quests').delete().in('id',del);if(r2.error)throw r2.error}
+    if(del.length){var r2=await sb.from('quests').delete().eq('user_id',ownerId).in('id',del);if(r2.error)throw r2.error}
     flushing=false;
     return true;
   }catch(e){
+    syncErrorMessage=(e&&e.message)||String(e)||'Unknown database error';
     up.forEach(function(id){pending.up[id]=1});
     del.forEach(function(id){pending.del[id]=1});
     savePending();
@@ -669,13 +670,14 @@ async function syncNow(){
   clearTimeout(retryTimer);
   setSync('Syncing…');
   var ok=false, changed=false;
+  syncErrorMessage='';
   try{
     ok=await flush();
     if(ok){changed=await pull()}
-  }catch(e){ok=false}
+  }catch(e){ok=false;syncErrorMessage=(e&&e.message)||String(e)||'Unknown database error'}
   syncing=false;
   if(!ok){
-    setSync('Offline. Saved on this device, will sync later.');
+    setSync((syncErrorMessage?'Sync error: '+syncErrorMessage+'. ':'')+'Saved on this device; will retry.');
     retryTimer=setTimeout(function(){syncNow()},20000);
     return;
   }
@@ -962,7 +964,8 @@ async function loadProfile(){
     }
   }catch(e){
     if(!user||user.id!==uid)return;
-    if(isMissingTable(e))profileMode='local';
+    if(isMissingTable(e)){profileMode='local'}
+    else {profileMode='error';profMsg('Could not load profile: '+((e&&e.message)||'Database error'),true)}
   }
   renderChrome();
   if(!profDirty)fillForm();
@@ -976,6 +979,7 @@ function saveProfile(patch){
 async function doSaveProfile(patch){
   if(!user)return {error:{message:'You are signed out.'}};
   var uid=user.id, next=Object.assign({},profile,patch), local=(profileMode==='local');
+  if(profileMode==='error')return {error:{message:'Profile table access failed. Check the profiles RLS policies in Supabase.'}};
   try{
     if(!local&&sb){
       var res=await sb.from('profiles').upsert({id:uid,full_name:next.name||null,username:next.username||null,avatar:next.avatar||null,updated_at:new Date().toISOString()},{onConflict:'id'});
