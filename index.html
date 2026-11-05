@@ -9,7 +9,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z' fill='%23F0A500'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a sign-in screen, then a game-style scoreboard on top, a quest adder under it, then a two-column ledger (list left, quest detail right). */
+/* Layout: a sign-in screen; then the app (menu button + scoreboard, quest adder, two-column ledger); a slide-in side menu; and a separate profile page at #profile. */
 :root{
   --bg:#EDF0F1; --surface:#F8FAFA; --surface-2:#E2E8EA; --line:#C9D2D6;
   --fg:#12202A; --muted:#4D5E69;
@@ -194,6 +194,44 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
 .cel-lv.up{font-size:34px;color:var(--accent);animation:pop .6s .2s both cubic-bezier(.2,1.2,.3,1)}
 .cel-card .bar{margin-block:4px}
 
+/* Side menu (opens from the three-line button) and the profile page. */
+.topbar{display:flex;align-items:center;gap:12px}
+.menu-btn{width:44px;height:44px;flex:none;display:inline-grid;place-items:center;border:1px solid var(--line);background:var(--surface);border-radius:10px;cursor:pointer;color:var(--fg)}
+.menu-btn:hover{border-color:var(--muted)}
+.scrim{position:fixed;inset:0;z-index:40;background:rgba(6,12,16,.55)}
+.drawer{position:fixed;top:0;bottom:0;left:0;z-index:41;width:min(320px,86vw);background:var(--surface);border-right:1px solid var(--line);box-shadow:12px 0 40px rgba(0,0,0,.25);display:flex;flex-direction:column;gap:22px;padding-block:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-bottom,0px));padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:20px;transform:translateX(-102%);visibility:hidden;transition:transform .25s cubic-bezier(.2,.8,.2,1),visibility 0s .25s;overflow-y:auto}
+.drawer.open{transform:none;visibility:visible;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.drawer-top{display:flex;justify-content:flex-end}
+.drawer-id{display:grid;gap:14px;justify-items:start;min-width:0}
+.drawer-name{margin:0;font:800 30px/1 var(--display);letter-spacing:.01em;text-transform:uppercase;overflow-wrap:anywhere}
+.nav{display:grid;gap:4px;border-top:1px solid var(--line);padding-top:12px}
+.nav-item{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:0 12px;background:none;border:0;border-radius:10px;cursor:pointer;text-align:left;font-weight:600}
+.nav-item:hover{background:var(--surface-2)}
+.nav-item .chev{margin-left:auto;color:var(--muted)}
+.avatar{display:inline-grid;place-items:center;border-radius:50%;overflow:hidden;position:relative;color:#fff;font-family:var(--display);font-weight:800;letter-spacing:.02em;flex:none}
+.avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.avatar.lg{width:88px;height:88px;font-size:36px}
+.avatar.xl{width:112px;height:112px;font-size:44px}
+.page{max-width:640px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:20px;padding-block:max(20px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.page-top{display:flex;align-items:center;gap:14px}
+.page-top h1{margin:0;font:800 clamp(34px,8vw,44px)/.95 var(--display);text-transform:uppercase;letter-spacing:.01em}
+.page-top h1:focus{outline:none}
+.prof-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:grid;gap:24px;min-width:0}
+.prof-avatar-row{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.prof-avatar-actions{display:grid;gap:8px;justify-items:start}
+.avatar-btns{display:flex;gap:8px;flex-wrap:wrap}
+.pform{display:grid;gap:18px}
+.pform input{min-height:50px;padding:0 16px;font-size:16px;background:var(--bg);border:1px solid var(--line);border-radius:10px;width:100%}
+.pform input[readonly]{color:var(--muted);background:var(--surface-2);cursor:default}
+.prefix{display:flex;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:10px}
+.prefix:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.prefix span{padding-left:16px;color:var(--muted)}
+.prefix input{border:0;background:transparent;padding-left:4px;border-radius:0 10px 10px 0}
+.prefix input:focus-visible{outline:none}
+.form-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.signout-row{margin-top:auto;display:flex;justify-content:center;padding-top:12px}
+.signout-row .btn{min-width:200px}
+
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
@@ -247,9 +285,12 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
 <!-- MAIN APP: hidden until sign-in succeeds, so signed-out visitors never see anyone's quests. -->
 <div class="app" hidden>
   <header class="hud">
+    <div class="topbar">
+    <button type="button" class="menu-btn" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="drawer"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <div class="brand">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>
       Sidequest Ledger
+    </div>
     </div>
     <div class="score" id="score">
       <div class="lv"><small>LEVEL</small><b id="lvNum">1</b></div>
@@ -290,11 +331,60 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
         <button type="button" class="btn quiet small" id="exportBtn">Export backup</button>
         <label class="btn quiet small" for="importFile" style="cursor:pointer">Import backup</label>
         <input type="file" id="importFile" accept="application/json,.json" hidden>
-        <button type="button" class="btn quiet small" id="signOutBtn">Sign out</button>
+        
       </span>
     </div>
     <p class="credits" id="credits"></p>
   </footer>
+</div>
+
+<!-- SIDE MENU: opens from the three-line button. Picture, name, then "About profile". Add future menu items inside the <nav>. -->
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Menu">
+  <div class="drawer-top"><button type="button" class="menu-btn" id="drawerClose" aria-label="Close menu"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="drawer-id">
+    <div id="drawerAvatar"></div>
+    <p class="drawer-name" id="drawerName"></p>
+  </div>
+  <nav class="nav" aria-label="Main">
+    <button type="button" class="nav-item" id="aboutBtn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4.5-6 8-6s7 2 8 6"/></svg>
+      <span>About profile</span>
+      <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+  </nav>
+</aside>
+
+<!-- PROFILE PAGE: shown when the address ends in #profile. Email (read only), name, username, picture, and Sign out at the bottom centre. -->
+<div class="page" id="profilePage" hidden>
+  <header class="page-top">
+    <button type="button" class="btn quiet small" id="profBack">← Back</button>
+    <h1 id="profTitle" tabindex="-1">Profile</h1>
+  </header>
+  <section class="prof-card" aria-label="Profile details">
+    <div class="prof-avatar-row">
+      <div id="profAvatar"></div>
+      <div class="prof-avatar-actions">
+        <div class="avatar-btns">
+          <button type="button" class="btn small" id="avatarPick">Upload picture</button>
+          <button type="button" class="btn quiet small danger" id="avatarRemove" hidden>Remove</button>
+        </div>
+        <input type="file" id="avatarFile" accept="image/*" hidden>
+        <p class="note">JPEG or PNG. It is cropped to a square.</p>
+      </div>
+    </div>
+    <form class="pform" id="profForm" novalidate>
+      <div class="fgrp"><label class="note" for="profEmail">Email address</label><input id="profEmail" type="email" readonly></div>
+      <div class="fgrp"><label class="note" for="profName">Name</label><input id="profName" type="text" maxlength="40" autocomplete="name" placeholder="Your name"></div>
+      <div class="fgrp"><label class="note" for="profUser">Username</label>
+        <div class="prefix"><span aria-hidden="true">@</span><input id="profUser" type="text" maxlength="20" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="choose_a_username"></div>
+        <p class="note">3 to 20 characters: lowercase letters, numbers and underscores.</p>
+      </div>
+      <div class="form-actions"><button class="btn primary" type="submit" id="profSave">Save changes</button><span class="note" id="profMsg" role="status"></span></div>
+      <p class="note err" id="profNote" hidden>Profile storage is not set up in your Supabase project yet, so changes are saved on this device only. Run the profiles SQL, then reload.</p>
+    </form>
+  </section>
+  <div class="signout-row"><button type="button" class="btn danger" id="profSignOut">Sign out</button></div>
 </div>
 
 <div class="overlay" id="celebrate" role="dialog" aria-modal="true" aria-labelledby="celTitle" hidden>
@@ -332,6 +422,21 @@ var RAWG_KEY='';
 var SUPABASE_URL='https://urhjydjaegyyrnthxabb.supabase.co';
 var SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVyaGp5ZGphZWd5eXJudGh4YWJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM3NzM2NTEsImV4cCI6MjEwOTM0OTY1MX0.6qIG9jD0lzIIJoUsHAO-NjXXB5iIxM_PHlFy1t0LG4g';
 
+/* PROFILES TABLE: run this once in Supabase, SQL Editor.
+   create table if not exists profiles (
+     id uuid primary key references auth.users(id) on delete cascade,
+     full_name text, username text, avatar text,
+     updated_at timestamptz not null default now(),
+     constraint username_format check (username is null or username ~ '^[a-z0-9_]{3,20}$'),
+     constraint name_len check (full_name is null or char_length(full_name) <= 40),
+     constraint avatar_size check (avatar is null or char_length(avatar) <= 150000)
+   );
+   create unique index if not exists profiles_username_key on profiles (username);
+   alter table profiles enable row level security;
+   drop policy if exists "own profile" on profiles;
+   create policy "own profile" on profiles for all using (auth.uid() = id) with check (auth.uid() = id);
+*/
+
 /* ---------- constants ---------- */
 var KINDS={movie:'Movie',game:'Game',place:'Place',task:'Task'};
 var SEG=['auto','movie','game','place','task'];
@@ -349,6 +454,7 @@ var LS_KEY='sidequest-ledger-v1';
                 leaking into another account on a shared computer) */
 var LS_PENDING='sidequest-ledger-pending';
 var LS_OWNER='sidequest-ledger-owner';
+var LS_PROFILE='sidequest-ledger-profile';
 var ICONS={
   movie:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 10h4M3 14h4M17 10h4M17 14h4"/>',
   game:'<path d="M7 8h10a4 4 0 0 1 4 4v1a3 3 0 0 1-5.2 2L14 13h-4l-1.8 2A3 3 0 0 1 3 13v-1a4 4 0 0 1 4-4z"/><path d="M8 10.5v3M6.5 12h3"/>',
@@ -640,7 +746,7 @@ function handleSession(session){
   if(recovering&&session&&session.user){
     /* arrived from a password reset link: ask for the new password first */
     user=null;
-    $('.app').hidden=true;$('#login').hidden=false;
+    showScreen();
     if(authMode!=='reset')setAuthMode('reset');
     return;
   }
@@ -649,13 +755,15 @@ function handleSession(session){
     user=session.user;
     $('#loginPass').value='';$('#loginPass2').value='';
     adoptUser();
-    $('#login').hidden=true;$('.app').hidden=false;
-    renderAll();
+    profile=readProfileCache(user.id);profDirty=false;
+    showScreen();
+    renderAll();renderChrome();loadProfile();
     setSync('Syncing…');
     syncNow();
   }else{
     user=null;
-    $('.app').hidden=true;$('#login').hidden=false;
+    profile=emptyProfile();
+    showScreen();
     updateLoginIntro();
   }
 }
@@ -688,6 +796,9 @@ async function signOut(){
   quests.clear();pending={up:{},del:{}};savePending();saveLocal();lsDel(LS_OWNER);
   openId=null;view='list';tab='active';filter='all';
   user=null;
+  profile=emptyProfile();profileMode='unknown';lsDel(LS_PROFILE);
+  try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+  closeDrawer(false);
   renderAll();handleSession(null);
 }
 var cooldownTimer=null;
@@ -780,6 +891,198 @@ async function submitAuth(e){
   }
   if(!keep){btn.disabled=false;btn.textContent=AUTH_BTN[authMode]}
 }
+
+/* ---------- profile and side menu ----------
+   The profile is one row per account in the `profiles` table (protected by row level security,
+   like quests). The picture is stored in that row as a small square JPEG, so no extra storage
+   setup is needed. A copy is cached in this browser so the menu shows your name and picture
+   straight away. If the table does not exist yet, the profile still works and is saved on this device. */
+var profile={name:'',username:'',avatar:''}, profileMode='unknown', profDirty=false, screenKey='', drawerReturn=null, profileChain=Promise.resolve();
+function emptyProfile(){return {name:'',username:'',avatar:''}}
+function readProfileCache(uid){
+  try{var p=JSON.parse(lsGet(LS_PROFILE)||'null');if(p&&p.uid===uid)return {name:p.name||'',username:p.username||'',avatar:p.avatar||''}}catch(e){}
+  return emptyProfile();
+}
+function writeProfileCache(){if(user)lsSet(LS_PROFILE,JSON.stringify({uid:user.id,name:profile.name,username:profile.username,avatar:profile.avatar}))}
+function isMissingTable(e){
+  return !!e&&(e.code==='42P01'||e.code==='PGRST205'||/does not exist|schema cache|could not find the table/i.test(String(e.message||'')));
+}
+function profileError(e){
+  var m=String((e&&e.message)||'');
+  if(e&&e.code==='23505')return 'That username is already taken. Try another.';
+  if(e&&e.code==='23514')return 'That name or username is not allowed. Check the length and characters.';
+  if(/fetch|network|failed to/i.test(m))return 'Could not reach the server. Check your connection and try again.';
+  return m||'Could not save. Try again.';
+}
+function displayName(){
+  if(profile.name)return profile.name;
+  if(profile.username)return profile.username;
+  var em=(user&&user.email)||'';return em?em.split('@')[0]:'You';
+}
+function initialsOf(){
+  var n=profile.name||profile.username||((user&&user.email)||'?').split('@')[0];
+  var parts=n.trim().split(/[\s._-]+/).filter(Boolean);
+  var s=parts.length>1?Array.from(parts[0])[0]+Array.from(parts[1])[0]:Array.from(n).slice(0,2).join('');
+  return s.toUpperCase();
+}
+function avatarHtml(size){
+  var a=profile.avatar;
+  if(a&&/^data:image\/jpeg;base64,/.test(a))return '<span class="avatar '+size+'"><img src="'+esc(a)+'" alt=""></span>';
+  var h=hash(user?user.id:'guest')%360;
+  return '<span class="avatar '+size+'" style="background:'+hsl(h,45,32)+'" aria-hidden="true">'+esc(initialsOf())+'</span>';
+}
+function profMsg(t,isErr){var el=$('#profMsg');el.textContent=t||'';el.className='note'+(isErr?' err':'')}
+function renderChrome(){
+  if(!user)return;
+  $('#drawerAvatar').innerHTML=avatarHtml('lg');
+  $('#drawerName').textContent=displayName();
+  $('#profAvatar').innerHTML=avatarHtml('xl');
+  $('#avatarRemove').hidden=!profile.avatar;
+  $('#profNote').hidden=profileMode!=='local';
+}
+function fillForm(){
+  if(!user)return;
+  $('#profEmail').value=user.email||'';
+  $('#profName').value=profile.name;
+  $('#profUser').value=profile.username;
+}
+async function loadProfile(){
+  if(!sb||!user)return;
+  var uid=user.id;
+  try{
+    var res=await sb.from('profiles').select('full_name,username,avatar').eq('id',uid).maybeSingle();
+    if(!user||user.id!==uid)return;
+    if(res.error)throw res.error;
+    profileMode='remote';
+    if(res.data){
+      profile={name:res.data.full_name||'',username:res.data.username||'',avatar:res.data.avatar||''};
+      writeProfileCache();
+    }else if(profile.name||profile.username||profile.avatar){
+      await saveProfile({});
+    }
+  }catch(e){
+    if(!user||user.id!==uid)return;
+    if(isMissingTable(e))profileMode='local';
+  }
+  renderChrome();
+  if(!profDirty)fillForm();
+}
+/* Saves go through one queue so two quick saves (name and picture) cannot overwrite each other. */
+function saveProfile(patch){
+  var run=profileChain.then(function(){return doSaveProfile(patch)});
+  profileChain=run.catch(function(){});
+  return run;
+}
+async function doSaveProfile(patch){
+  if(!user)return {error:{message:'You are signed out.'}};
+  var uid=user.id, next=Object.assign({},profile,patch), local=(profileMode==='local');
+  try{
+    if(!local&&sb){
+      var res=await sb.from('profiles').upsert({id:uid,full_name:next.name||null,username:next.username||null,avatar:next.avatar||null,updated_at:new Date().toISOString()},{onConflict:'id'});
+      if(res.error){
+        if(isMissingTable(res.error)){profileMode='local';local=true}
+        else return {error:res.error};
+      }else profileMode='remote';
+    }
+  }catch(e){return {error:e}}
+  if(!user||user.id!==uid)return {error:{message:'You are signed out.'}};
+  profile=next;writeProfileCache();renderChrome();
+  return {ok:true,local:local};
+}
+async function submitProfile(e){
+  e.preventDefault();
+  var name=$('#profName').value.replace(/\s+/g,' ').trim();
+  var un=$('#profUser').value.trim().replace(/^@/,'').toLowerCase();
+  if(name.length>40){profMsg('Keep your name to 40 characters or fewer.',true);return}
+  if(un&&!/^[a-z0-9_]{3,20}$/.test(un)){profMsg('Username must be 3 to 20 characters: lowercase letters, numbers or underscores.',true);return}
+  var btn=$('#profSave');btn.disabled=true;profMsg('Saving…');
+  var r=await saveProfile({name:name,username:un});
+  btn.disabled=false;
+  if(r.error){profMsg(profileError(r.error),true);return}
+  profDirty=false;fillForm();
+  profMsg(r.local?'Saved on this device only.':'Saved.');
+}
+async function resizeAvatar(file){
+  var bmp=await createImageBitmap(file), S=256, c=document.createElement('canvas');
+  c.width=S;c.height=S;
+  var x=c.getContext('2d'), side=Math.min(bmp.width,bmp.height), sx=(bmp.width-side)/2, sy=(bmp.height-side)/2;
+  x.fillStyle='#fff';x.fillRect(0,0,S,S);
+  x.imageSmoothingQuality='high';
+  x.drawImage(bmp,sx,sy,side,side,0,0,S,S);
+  if(bmp.close)bmp.close();
+  var url='',q=[0.85,0.7,0.55];
+  for(var i=0;i<q.length;i++){url=c.toDataURL('image/jpeg',q[i]);if(url.length<=100000)break}
+  return url;
+}
+async function handleAvatar(file){
+  if(!file)return;
+  if(!/^image\//.test(file.type)){profMsg('Choose an image file (JPEG or PNG).',true);return}
+  profMsg('Uploading…');
+  var url;
+  try{url=await resizeAvatar(file)}catch(e){profMsg('Could not read that image. Try a JPEG or PNG.',true);return}
+  var r=await saveProfile({avatar:url});
+  if(r.error){profMsg(profileError(r.error),true);return}
+  profMsg(r.local?'Picture saved on this device only.':'Picture updated.');
+}
+function openDrawer(){
+  var d=$('#drawer');if(d.classList.contains('open'))return;
+  drawerReturn=document.activeElement;
+  d.classList.add('open');$('#scrim').hidden=false;
+  $('#menuBtn').setAttribute('aria-expanded','true');
+  document.body.style.overflow='hidden';
+  $('#drawerClose').focus();
+}
+function closeDrawer(ret){
+  var d=$('#drawer');if(!d.classList.contains('open'))return;
+  d.classList.remove('open');$('#scrim').hidden=true;
+  $('#menuBtn').setAttribute('aria-expanded','false');
+  document.body.style.overflow='';
+  if(ret!==false&&drawerReturn&&drawerReturn.focus)drawerReturn.focus();
+}
+function profileHash(){return /^#profile\b/.test(location.hash||'')}
+/* showScreen(): one place decides which screen is visible: sign-in, the app, or the profile page. */
+function showScreen(){
+  var inApp=!!user, prof=inApp&&profileHash();
+  var key=inApp?(prof?'profile':'app'):'login';
+  $('#login').hidden=inApp;
+  $('.app').hidden=key!=='app';
+  $('#profilePage').hidden=key!=='profile';
+  closeDrawer(false);
+  document.title=prof?'Profile · Sidequest Ledger':'Sidequest Ledger';
+  if(key!==screenKey){
+    var prev=screenKey;screenKey=key;window.scrollTo(0,0);
+    if(key==='profile'){profDirty=false;profMsg('');renderChrome();fillForm();if(prev==='app')$('#profTitle').focus()}
+    else if(key==='app'&&prev==='profile'){$('#menuBtn').focus()}
+  }
+}
+function goHome(){
+  if(profileHash())history.pushState(null,'',location.pathname+location.search);
+  showScreen();
+}
+$('#menuBtn').addEventListener('click',openDrawer);
+$('#drawerClose').addEventListener('click',function(){closeDrawer()});
+$('#scrim').addEventListener('click',function(){closeDrawer()});
+$('#aboutBtn').addEventListener('click',function(){closeDrawer(false);location.hash='profile'});
+$('#profBack').addEventListener('click',goHome);
+$('#profSignOut').addEventListener('click',signOut);
+$('#profForm').addEventListener('submit',submitProfile);
+$('#profForm').addEventListener('input',function(){profDirty=true;profMsg('')});
+$('#avatarPick').addEventListener('click',function(){$('#avatarFile').click()});
+$('#avatarFile').addEventListener('change',function(){handleAvatar(this.files&&this.files[0]);this.value=''});
+$('#avatarRemove').addEventListener('click',async function(){
+  var r=await saveProfile({avatar:''});
+  if(r.error)profMsg(profileError(r.error),true);else profMsg('Picture removed.');
+});
+window.addEventListener('hashchange',function(){if(user)showScreen()});
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Tab'||!$('#drawer').classList.contains('open'))return;
+  var f=Array.prototype.slice.call($('#drawer').querySelectorAll('button:not([disabled])'));
+  if(!f.length)return;
+  var first=f[0], last=f[f.length-1];
+  if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+  else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+  else if(f.indexOf(document.activeElement)<0){e.preventDefault();first.focus()}
+});
 
 /* ---------- changing quests ---------- */
 /* mutate(): every edit goes through here. It saves in the browser (instant), then calls
@@ -1199,12 +1502,11 @@ document.addEventListener('change',function(e){
 });
 document.addEventListener('keydown',function(e){
   if(e.target.id==='updText'&&e.key==='Enter'&&(e.metaKey||e.ctrlKey)){e.preventDefault();postUpdate()}
-  if(e.key==='Escape'){if(!$('#celebrate').hidden)closeCelebrate();else closeAc()}
+  if(e.key==='Escape'){if(!$('#celebrate').hidden)closeCelebrate();else if($('#drawer').classList.contains('open'))closeDrawer();else closeAc()}
 });
 $('#celBtn').addEventListener('click',closeCelebrate);
 $('#celebrate').addEventListener('click',function(e){if(e.target===this)closeCelebrate()});
 $('#exportBtn').addEventListener('click',exportData);
-$('#signOutBtn').addEventListener('click',signOut);
 /* Sign-in page wiring: form submit, the Sign in / Create account tabs, the Forgot password
    link (its meaning changes per mode: forgot / back / skip), and the show-password tick box. */
 $('#loginForm').addEventListener('submit',submitAuth);
