@@ -185,7 +185,6 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
 
 /* Side menu (opens from the three-line button) and the profile page. */
 .topbar{display:flex;align-items:center;gap:12px}
-.drawer-top .sidebar-toggle{display:none}
 .menu-btn{width:44px;height:44px;flex:none;display:inline-grid;place-items:center;border:1px solid var(--line);background:var(--surface);border-radius:10px;cursor:pointer;color:var(--fg)}
 .menu-btn:hover{border-color:var(--muted)}
 .scrim{position:fixed;inset:0;z-index:40;background:rgba(6,12,16,.55)}
@@ -297,18 +296,20 @@ body{background:var(--bg);color:var(--fg)}
 .footer{border-color:var(--line)}
 .top-profile{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;padding:3px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--fg);cursor:pointer;flex:none}
 .top-profile:hover{border-color:var(--accent)}
+.top-profile{margin-left:auto}
+
 .top-profile .avatar.lg{width:36px;height:36px;font-size:14px}
 @media (min-width:900px){
   .app:not([hidden]){margin-left:256px;padding:30px clamp(24px,3.6vw,56px) 48px}
-  .app:not([hidden]) .topbar{display:flex;grid-column:1/-1;justify-content:flex-end;align-items:center}
-  .app:not([hidden]) .topbar .menu-btn,.app:not([hidden]) .topbar .brand{display:none}
+  .app:not([hidden]){transition:margin-left .2s ease}
+  .app:not([hidden]) .topbar{display:flex;grid-column:1/-1;justify-content:space-between;align-items:center}
+  .app:not([hidden]) .topbar .brand{display:none}
   .app:not([hidden]) .hud{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center}
   .app:not([hidden]) .score{grid-column:1;grid-row:2;max-width:620px}
   .app:not([hidden]) .tally{grid-column:2;grid-row:2;justify-content:flex-end}
   .app:not([hidden])~.drawer{position:fixed;top:0;bottom:0;left:0;z-index:41;width:256px;transform:none;visibility:visible;transition:none;box-shadow:none;border-right:1px solid var(--line);gap:18px;padding:24px 16px 16px;background:var(--surface)}
-  .app:not([hidden])~.drawer .drawer-top{display:flex;justify-content:flex-end}
-  .app:not([hidden])~.drawer .drawer-top #drawerClose{display:none}
-  .app:not([hidden])~.drawer .sidebar-toggle{display:inline-grid}
+  .app:not([hidden])~.drawer{transition:width .2s ease,padding .2s ease}
+  .app:not([hidden])~.drawer .drawer-top{display:none}
   .app:not([hidden])~.drawer .nav-item .chev{display:none}
 }
 @media (min-width:900px) and (max-width:1120px){
@@ -325,7 +326,6 @@ body{background:var(--bg);color:var(--fg)}
   .topbar{gap:8px}
   .brand{font-size:14px;gap:6px}
   .brand svg{width:18px;height:18px}
-  .top-profile{padding-right:4px}
 }
 /* Desktop navigation can collapse to an icon rail; narrow screens keep the slide-out drawer. */
 @media (min-width:900px){
@@ -336,5 +336,4 @@ body{background:var(--bg);color:var(--fg)}
   body.sidebar-collapsed .app:not([hidden])~.drawer .nav-item{justify-content:center;gap:0;padding-left:0;padding-right:0}
   body.sidebar-collapsed .app:not([hidden])~.drawer .nav-item>span{display:none}
   body.sidebar-collapsed .app:not([hidden])~.drawer .nav-item .chev{display:none}
-  body.sidebar-collapsed .app:not([hidden])~.drawer #sidebarToggle svg{transform:rotate(180deg)}
 }
