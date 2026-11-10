@@ -43,7 +43,6 @@ function profMsg(t,isErr){var el=$('#profMsg');el.textContent=t||'';el.className
 function renderChrome(){
   if(!user)return;
   $('#topAvatar').innerHTML=avatarHtml('lg');
-  $('#topName').textContent=displayName();
   $('#profAvatar').innerHTML=avatarHtml('xl');
   $('#avatarRemove').hidden=!profile.avatar;
   $('#profNote').hidden=profileMode!=='local';
@@ -134,7 +133,24 @@ async function handleAvatar(file){
   if(r.error){profMsg(profileError(r.error),true);return}
   profMsg(r.local?'Picture saved on this device only.':'Picture updated.');
 }
-function openDrawer(){
+var sidebarCollapsed=false;
+function applySidebarState(){
+  var desktop=window.matchMedia('(min-width:900px)').matches;
+  document.body.classList.toggle('sidebar-collapsed',desktop&&sidebarCollapsed);
+  var b=$('#sidebarToggle'), label=sidebarCollapsed?'Expand navigation':'Collapse navigation';
+  b.setAttribute('aria-pressed',String(sidebarCollapsed));b.setAttribute('aria-label',label);b.title=label;
+}
+function loadSidebarState(){
+  try{sidebarCollapsed=localStorage.getItem('sidequest-ledger-sidebar')==='collapsed'}catch(e){}
+  applySidebarState();
+}
+loadSidebarState();
+window.addEventListener('resize',applySidebarState);
+$('#sidebarToggle').addEventListener('click',function(){
+  sidebarCollapsed=!sidebarCollapsed;
+  try{localStorage.setItem('sidequest-ledger-sidebar',sidebarCollapsed?'collapsed':'expanded')}catch(e){}
+  applySidebarState();
+});function openDrawer(){
   var d=$('#drawer');if(d.classList.contains('open')||window.matchMedia('(min-width:900px)').matches)return;
   drawerReturn=document.activeElement;
   d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');
