@@ -184,7 +184,7 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
 .cel-card .bar{margin-block:4px}
 
 /* Side menu (opens from the three-line button) and the profile page. */
-.topbar{display:flex;align-items:center;gap:12px}
+.topbar{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:8px;position:relative}
 .menu-btn{width:44px;height:44px;flex:none;display:inline-grid;place-items:center;border:1px solid var(--line);background:var(--surface);border-radius:10px;cursor:pointer;color:var(--fg)}
 .menu-btn:hover{border-color:var(--muted)}
 .scrim{position:fixed;inset:0;z-index:40;background:rgba(6,12,16,.55)}
@@ -203,6 +203,7 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
 .avatar.xl{width:112px;height:112px;font-size:44px}
 .page{max-width:640px;margin:0 auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;gap:20px;padding-block:max(20px,env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .page-top{display:flex;align-items:center;gap:14px}
+.profile-menu-btn{display:inline-grid}
 .page-top h1{margin:0;font:800 clamp(34px,8vw,44px)/.95 var(--display);text-transform:uppercase;letter-spacing:.01em}
 .page-top h1:focus{outline:none}
 .prof-card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:24px;display:grid;gap:24px;min-width:0}
@@ -218,8 +219,6 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
 .prefix input{border:0;background:transparent;padding-left:4px;border-radius:0 10px 10px 0}
 .prefix input:focus-visible{outline:none}
 .form-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-.signout-row{margin-top:auto;display:flex;justify-content:center;padding-top:12px}
-.signout-row .btn{min-width:200px}
 
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
@@ -279,7 +278,8 @@ body{background:var(--bg);color:var(--fg)}
 .effort button{border-radius:999px}
 .effort button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--fg)}
 .sidebar-brand{display:flex;align-items:center;gap:11px;padding:2px 8px 18px;border-bottom:1px solid var(--line)}
-.sidebar-mark{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:var(--accent-soft);color:var(--accent)}
+.sidebar-toggle{width:36px;height:36px;display:inline-grid;place-items:center;flex:none;padding:0;border:0;border-radius:9px;background:transparent;color:var(--accent);cursor:pointer}
+.sidebar-toggle:hover{background:var(--surface-2)}
 .sidebar-wordmark{display:grid;font:700 14px/1.2 var(--display);letter-spacing:-.02em;color:var(--fg)}
 .sidebar-wordmark b{font-weight:700}
 .sidebar-wordmark small{margin-top:4px;font:600 9px var(--mono);letter-spacing:.1em;color:var(--muted)}
@@ -291,26 +291,34 @@ body{background:var(--bg);color:var(--fg)}
 .nav-item:hover{background:var(--surface-2);color:var(--fg)}
 .nav-item.nav-active{background:var(--accent-soft);color:var(--accent);font-weight:650}
 .nav-item .chev{color:var(--muted)}
+.drawer-actions{margin-top:auto;padding-top:12px;border-top:1px solid var(--line)}
+.drawer-signout{color:var(--danger)}
+.drawer-signout:hover{background:var(--surface-2);color:var(--danger)}
 .drawer-id{display:flex;align-items:center;gap:11px;padding:12px 8px 2px;border-top:1px solid var(--line)}
 .drawer-name{font:600 13px/1.3 var(--display);letter-spacing:0;text-transform:none;color:var(--fg)}
 .footer{border-color:var(--line)}
-.top-profile{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;min-height:44px;padding:3px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--fg);cursor:pointer;flex:none}
+.top-profile{display:grid;place-items:center;width:48px;height:48px;min-height:48px;padding:2px;border:1px solid var(--line);border-radius:50%;background:var(--surface);color:var(--fg);cursor:pointer;overflow:hidden;line-height:0;flex:none}
 .top-profile:hover{border-color:var(--accent)}
-.top-profile{margin-left:auto}
+.top-profile{grid-column:3;justify-self:end;margin-left:0}
 
-.top-profile .avatar.lg{width:36px;height:36px;font-size:14px}
+.top-profile #topAvatar{display:grid;place-items:center;width:40px;height:40px;line-height:0}
+.top-profile .avatar.lg{display:grid;place-items:center;width:40px;height:40px;font-size:14px}
+.topbar .brand{grid-column:2;justify-self:center;white-space:nowrap}
 @media (min-width:900px){
   .app:not([hidden]){margin-left:256px;padding:30px clamp(24px,3.6vw,56px) 48px}
   .app:not([hidden]){transition:margin-left .2s ease}
-  .app:not([hidden]) .topbar{display:flex;grid-column:1/-1;justify-content:space-between;align-items:center}
-  .app:not([hidden]) .topbar .brand{display:none}
+  .app:not([hidden]) .topbar{grid-column:1/-1}
+  .app:not([hidden]) .topbar .menu-btn{display:none}
   .app:not([hidden]) .hud{grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center}
   .app:not([hidden]) .score{grid-column:1;grid-row:2;max-width:620px}
   .app:not([hidden]) .tally{grid-column:2;grid-row:2;justify-content:flex-end}
-  .app:not([hidden])~.drawer{position:fixed;top:0;bottom:0;left:0;z-index:41;width:256px;transform:none;visibility:visible;transition:none;box-shadow:none;border-right:1px solid var(--line);gap:18px;padding:24px 16px 16px;background:var(--surface)}
+  body.user-signed-in .drawer{position:fixed;top:0;bottom:0;left:0;z-index:41;width:256px;transform:none;visibility:visible;transition:none;box-shadow:none;border-right:1px solid var(--line);gap:18px;padding:24px 16px 16px;background:var(--surface)}
   .app:not([hidden])~.drawer{transition:width .2s ease,padding .2s ease}
-  .app:not([hidden])~.drawer .drawer-top{display:none}
-  .app:not([hidden])~.drawer .nav-item .chev{display:none}
+  body.user-signed-in .drawer .drawer-top{display:none}
+  body.user-signed-in .drawer .nav-item .chev{display:none}
+  body.user-signed-in:not(.sidebar-collapsed) .page{margin-left:calc(256px + max(16px,(100vw - 256px - 640px)/2));margin-right:auto}
+  body.user-signed-in.sidebar-collapsed .page{margin-left:calc(80px + max(16px,(100vw - 80px - 640px)/2));margin-right:auto}
+  body.user-signed-in .page-top .profile-menu-btn{display:none}
 }
 @media (min-width:900px) and (max-width:1120px){
   .app:not([hidden]) .hud{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
@@ -330,10 +338,13 @@ body{background:var(--bg);color:var(--fg)}
 /* Desktop navigation can collapse to an icon rail; narrow screens keep the slide-out drawer. */
 @media (min-width:900px){
   body.sidebar-collapsed .app:not([hidden]){margin-left:80px;transition:margin-left .2s ease}
-  body.sidebar-collapsed .app:not([hidden])~.drawer{width:80px;padding-left:12px;padding-right:12px;transition:width .2s ease,padding .2s ease}
-  body.sidebar-collapsed .app:not([hidden])~.drawer .sidebar-brand{justify-content:center;padding-left:0;padding-right:0}
-  body.sidebar-collapsed .app:not([hidden])~.drawer .sidebar-wordmark{display:none}
-  body.sidebar-collapsed .app:not([hidden])~.drawer .nav-item{justify-content:center;gap:0;padding-left:0;padding-right:0}
-  body.sidebar-collapsed .app:not([hidden])~.drawer .nav-item>span{display:none}
-  body.sidebar-collapsed .app:not([hidden])~.drawer .nav-item .chev{display:none}
+  body.sidebar-collapsed.user-signed-in .drawer{width:80px;padding-left:12px;padding-right:12px;transition:width .2s ease,padding .2s ease}
+  body.sidebar-collapsed.user-signed-in .drawer .sidebar-brand{justify-content:center;gap:0;padding-left:0;padding-right:0}
+  body.sidebar-collapsed.user-signed-in .drawer .sidebar-wordmark{display:none}
+  body.sidebar-collapsed.user-signed-in .drawer .nav-item{justify-content:center;gap:0;padding-left:0;padding-right:0}
+  body.sidebar-collapsed.user-signed-in .drawer .nav-item>span{display:none}
+  body.sidebar-collapsed.user-signed-in .drawer .nav-item .chev{display:none}
 }
+
+/* Credits are hidden; sync status and backup controls remain available. */
+.credits{display:none}

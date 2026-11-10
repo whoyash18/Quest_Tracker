@@ -44,6 +44,7 @@ function renderChrome(){
   if(!user)return;
   $('#topAvatar').innerHTML=avatarHtml('lg');
   $('#profAvatar').innerHTML=avatarHtml('xl');
+  $('#sidebarGreeting').textContent='Welcome, '+(profile.username||displayName());
   $('#avatarRemove').hidden=!profile.avatar;
   $('#profNote').hidden=profileMode!=='local';
 }
@@ -133,45 +134,39 @@ async function handleAvatar(file){
   if(r.error){profMsg(profileError(r.error),true);return}
   profMsg(r.local?'Picture saved on this device only.':'Picture updated.');
 }
-var sidebarCollapsed=false;
+var sidebarCollapsed=true;
 function isDesktopNav(){return window.matchMedia('(min-width:900px)').matches}
 function applySidebarState(){
-  var desktop=isDesktopNav(), b=$('#menuBtn'), drawer=$('#drawer');
+  var desktop=isDesktopNav(), drawer=$('#drawer'), sideButton=$('#sidebarToggle'), mobileButton=$('#menuBtn'), profileButton=$('#profileMenuBtn');
+  var drawerOpen=drawer.classList.contains('open');
   document.body.classList.toggle('sidebar-collapsed',desktop&&sidebarCollapsed);
-  var label=desktop?(sidebarCollapsed?'Expand navigation':'Collapse navigation'):(drawer.classList.contains('open')?'Close menu':'Open menu');
-  b.setAttribute('aria-expanded',String(desktop?!sidebarCollapsed:drawer.classList.contains('open')));
-  b.setAttribute('aria-label',label);b.title=label;
+  var expanded=desktop?!sidebarCollapsed:drawerOpen;
+  var label=desktop?(sidebarCollapsed?'Expand navigation':'Collapse navigation'):(drawerOpen?'Close menu':'Open menu');
+  [sideButton,mobileButton,profileButton].forEach(function(b){b.setAttribute('aria-expanded',String(expanded));b.setAttribute('aria-label',label);b.title=label});
 }
-function loadSidebarState(){
-  try{sidebarCollapsed=localStorage.getItem('sidequest-ledger-sidebar')==='collapsed'}catch(e){}
-  applySidebarState();
-}
+function loadSidebarState(){sidebarCollapsed=true;applySidebarState()}
 function toggleNavigation(){
-  if(isDesktopNav()){
-    sidebarCollapsed=!sidebarCollapsed;
-    try{localStorage.setItem('sidequest-ledger-sidebar',sidebarCollapsed?'collapsed':'expanded')}catch(e){}
-    applySidebarState();
-  }else if($('#drawer').classList.contains('open'))closeDrawer();
+  if(isDesktopNav()){sidebarCollapsed=!sidebarCollapsed;applySidebarState()}
+  else if($('#drawer').classList.contains('open'))closeDrawer();
   else openDrawer();
 }
 loadSidebarState();
 window.addEventListener('resize',function(){
   if(isDesktopNav()&&$('#drawer').classList.contains('open'))closeDrawer(false);
   applySidebarState();
-});
-function openDrawer(){
+});function openDrawer(){
   var d=$('#drawer');if(d.classList.contains('open')||window.matchMedia('(min-width:900px)').matches)return;
   drawerReturn=document.activeElement;
   d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');
   d.classList.add('open');$('#scrim').hidden=false;
-  $('#menuBtn').setAttribute('aria-expanded','true');$('#menuBtn').setAttribute('aria-label','Close menu');$('#menuBtn').title='Close menu';
+  applySidebarState();
   document.body.style.overflow='hidden';
   $('#drawerClose').focus();
 }
 function closeDrawer(ret){
   var d=$('#drawer');if(!d.classList.contains('open'))return;
   d.classList.remove('open');d.removeAttribute('role');d.removeAttribute('aria-modal');$('#scrim').hidden=true;
-  $('#menuBtn').setAttribute('aria-expanded','false');$('#menuBtn').setAttribute('aria-label','Open menu');$('#menuBtn').title='Open menu';
+  applySidebarState();
   document.body.style.overflow='';
   if(ret!==false&&drawerReturn&&drawerReturn.focus)drawerReturn.focus();
 }
@@ -179,6 +174,7 @@ function profileHash(){return /^#profile\b/.test(location.hash||'')}
 /* showScreen(): one place decides which screen is visible: sign-in, the app, or the profile page. */
 function showScreen(){
   var inApp=!!user, prof=inApp&&profileHash();
+  document.body.classList.toggle('user-signed-in',inApp);
   var key=inApp?(prof?'profile':'app'):'login';
   $('#login').hidden=inApp;
   $('.app').hidden=key!=='app';
@@ -186,7 +182,7 @@ function showScreen(){
   closeDrawer(false);
   document.title=prof?'Profile · Sidequest Ledger':'Sidequest Ledger';
   if(key!==screenKey){
-    var prev=screenKey;screenKey=key;window.scrollTo(0,0);
+    var prev=screenKey;screenKey=key;window.scrollTo(0,0);if(key==='app'&&prev==='login'){sidebarCollapsed=true;applySidebarState()}
     if(key==='profile'){profDirty=false;profMsg('');renderChrome();fillForm();if(prev==='app')$('#profTitle').focus()}
     else if(key==='app'&&prev==='profile'){(window.matchMedia('(min-width:900px)').matches?$('#addInput'):$('#menuBtn')).focus()}
   }
@@ -196,12 +192,14 @@ function goHome(){
   showScreen();
 }
 $('#menuBtn').addEventListener('click',toggleNavigation);
+$('#sidebarToggle').addEventListener('click',toggleNavigation);
+$('#profileMenuBtn').addEventListener('click',toggleNavigation);
 $('#drawerClose').addEventListener('click',function(){closeDrawer()});
 $('#scrim').addEventListener('click',function(){closeDrawer()});
 $('#aboutBtn').addEventListener('click',function(){closeDrawer(false);location.hash='profile'});
 $('#topProfileBtn').addEventListener('click',function(){location.hash='profile'});
 $('#profBack').addEventListener('click',goHome);
-$('#profSignOut').addEventListener('click',signOut);
+$('#drawerSignOut').addEventListener('click',signOut);
 $('#profForm').addEventListener('submit',submitProfile);
 $('#profForm').addEventListener('input',function(){profDirty=true;profMsg('')});
 $('#avatarPick').addEventListener('click',function(){$('#avatarFile').click()});
