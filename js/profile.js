@@ -44,7 +44,8 @@ function renderChrome(){
   if(!user)return;
   $('#topAvatar').innerHTML=avatarHtml('lg');
   $('#profAvatar').innerHTML=avatarHtml('xl');
-  $('#sidebarGreeting').textContent='Welcome, '+(profile.username||displayName());
+  var greeting=$('#sidebarGreeting');
+  if(greeting)greeting.textContent='Welcome, '+(profile.username||displayName());
   $('#avatarRemove').hidden=!profile.avatar;
   $('#profNote').hidden=profileMode!=='local';
 }
