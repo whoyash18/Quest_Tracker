@@ -15,10 +15,11 @@ function addQuest(p){
   var dup=null;quests.forEach(function(q){if(q.status!=='done'&&q.title.toLowerCase()===title.toLowerCase())dup=q});
   if(dup){openId=dup.id;tab='active';filter='all';$('#addInput').value='';closeAc();renderAll();flash('Already on your list.');return}
   var id='q'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-  var q=normalize({title:title,sub:p.sub||'',kind:p.kind||'task',auto:!!p.auto,verified:!!p.verified,src:p.src||'',srcId:p.srcId||'',img:safeImg(p.img),url:safeUrl(p.url),status:'active',created:Date.now(),updates:[],highlights:[],facts:[],effort:'standard',cover:null,blurb:''},id);
+  var status=p.status==='done'?'done':'active';
+  var q=normalize({title:title,sub:p.sub||'',kind:p.kind||'task',auto:!!p.auto,verified:!!p.verified,src:p.src||'',srcId:p.srcId||'',img:safeImg(p.img),url:safeUrl(p.url),status:status,completed:status==='done'?Date.now():null,created:Date.now(),updates:[],highlights:[],facts:[],effort:'standard',cover:null,blurb:''},id);
   quests.set(id,q);saveLocal();markUp(id);openId=id;tab='active';filter='all';
   $('#addInput').value='';closeAc();renderAll();
-  if(q.src)loadDetails(id);
+  if(q.src&&q.src!=='igdb')loadDetails(id);
   else if(!p.skipLookup&&(q.kind!=='task'||q.auto))lookupBest(id,false);
 }
 function feedback(before,after,o){
@@ -32,7 +33,7 @@ function floatXp(n){
   $('#score').appendChild(el);setTimeout(function(){el.remove()},1500);
 }
 
-/* ---------- data sources: TMDB, RAWG, Wikipedia, Wikivoyage ---------- */
+/* ---------- data sources: TMDB, IGDB, Wikipedia, Wikivoyage ---------- */
 var WIKI='https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1';
 async function wikiSearch(q,o){
   var url=WIKI+'&prop=pageimages%7Cdescription&piprop=thumbnail&pithumbsize=400'+(o.prefix?'&generator=prefixsearch&gpssearch='+enc(q)+'&gpslimit=8':'&generator=search&gsrsearch='+enc(q)+'&gsrlimit=8');
@@ -49,15 +50,10 @@ async function searchMovies(q,sig){
   return r.filter(function(x){return /film/i.test(x.sub)}).map(function(x){x.kind='movie';return x});
 }
 async function searchGames(q,sig){
-  if(RAWG_KEY){
-    var d=await jget('https://api.rawg.io/api/games?key='+enc(RAWG_KEY)+'&page_size=6&search='+enc(q),sig);
-    return (d.results||[]).slice(0,6).map(function(g){
-      var yr=(g.released||'').slice(0,4), gen=(g.genres&&g.genres[0])?g.genres[0].name:'';
-      return {kind:'game',title:g.name,sub:[yr,gen].filter(Boolean).join(' · '),img:g.background_image||null,src:'rawg',srcId:String(g.id),url:g.slug?'https://rawg.io/games/'+g.slug:null};
-    });
-  }
-  var r=await wikiSearch(q+' video game',{sig:sig});
-  return r.filter(function(x){return /video game/i.test(x.sub)}).map(function(x){x.kind='game';return x});
+  if(!sb||!user)throw new Error('Sign in to search the IGDB catalog.');
+  var result=await sb.functions.invoke('igdb-catalog',{body:{mode:'search',query:q,limit:6,offset:0}});
+  if(result.error)throw result.error;
+  return ((result.data&&result.data.games)||[]).map(function(g){return {kind:'game',title:g.name,sub:String(g.year||''),img:g.image||null,src:'igdb',srcId:String(g.id),url:'https://www.igdb.com/games/'+enc(g.slug||g.name.toLowerCase().replace(/[^a-z0-9]+/g,'-'))}});
 }
 async function searchPlaces(q,sig){
   var a=await wikiSearch(q,{prefix:true,sig:sig}), keep=function(x){return PLACE_RE.test(x.sub)&&!NOT_PLACE_RE.test(x.sub)};
@@ -108,19 +104,13 @@ async function fetchDetails(q){
       img:d.poster_path?'https://image.tmdb.org/t/p/w342'+d.poster_path:null
     };
   }
-  if(q.src==='rawg'){
-    var g=await jget('https://api.rawg.io/api/games/'+enc(q.srcId)+'?key='+enc(RAWG_KEY));
-    var devs=(g.developers||[]).map(function(x){return x.name}).slice(0,2).join(', ');
-    var plats=(g.platforms||[]).map(function(p){return p.platform.name}).slice(0,4).join(', ');
-    var gens=(g.genres||[]).map(function(x){return x.name}).slice(0,3).join(', ');
-    var pt=g.playtime||0;
-    return {
-      sub:[(g.released||'').slice(0,4),devs].filter(Boolean).join(' · '),
-      blurb:trimText(g.description_raw,420),
-      facts:[devs&&{k:'Developer',v:devs},plats&&{k:'Platforms',v:plats},gens&&{k:'Genre',v:gens},pt&&{k:'Time to beat',v:'about '+pt+' hours'}].filter(Boolean),
-      highlights:[],effort:pt&&pt<=3?'quick':(pt>30?'epic':'standard'),
-      img:g.background_image||null
-    };
+  if(q.src==='igdb'){
+    if(!sb||!user)throw new Error('Sign in to load IGDB details.');
+    var result=await sb.functions.invoke('igdb-catalog',{body:{mode:'details',id:Number(q.srcId)}});
+    if(result.error)throw result.error;
+    var game=result.data&&result.data.game;
+    if(!game)throw new Error('Game details not found.');
+    return {sub:String(game.year||q.sub||''),blurb:trimText(game.summary,420),facts:(game.genres||[]).length?[{k:'Genres',v:game.genres.join(', ')}]:[],highlights:[],effort:'standard',img:game.image||q.img,url:q.url};
   }
   var w=await jget(WIKI+'&prop=extracts%7Cdescription%7Cpageimages&exintro=1&explaintext=1&exsentences=3&piprop=thumbnail&pithumbsize=500&titles='+enc(q.srcId));
   var p=Object.values((w.query&&w.query.pages)||{})[0];
@@ -169,11 +159,10 @@ async function lookupBest(id,force){
 
 /* ---------- autocomplete ---------- */
 function setHint(){
-  var parts=['Pick a type, then start typing. Posters and details come from TMDB'+(RAWG_KEY?', RAWG':'')+' and Wikipedia.'];
-  if(!RAWG_KEY)parts.push('Game search uses Wikipedia until a RAWG key is added in the settings at the top of the script.');
+  var parts=['Choose a type, then search or add it. Movie data comes from TMDB, games from IGDB, and place details from Wikipedia.'];
   $('#hint').textContent=parts.join(' ');
   var c='Movie data and posters from <a href="https://www.themoviedb.org" target="_blank" rel="noopener">TMDB</a>. This product uses the TMDB API but is not endorsed or certified by TMDB. ';
-  if(RAWG_KEY)c+='Game data from <a href="https://rawg.io" target="_blank" rel="noopener">RAWG</a>. ';
+  c+='Game data and covers from <a href="https://www.igdb.com" target="_blank" rel="noopener">IGDB</a>. ';
   c+='Places and summaries from <a href="https://en.wikipedia.org" target="_blank" rel="noopener">Wikipedia</a> and <a href="https://en.wikivoyage.org" target="_blank" rel="noopener">Wikivoyage</a> (CC BY-SA).';
   $('#credits').innerHTML=c;
 }

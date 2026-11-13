@@ -107,9 +107,11 @@ function renderDetail(){
   var el=$('#detail'), q=openId&&quests.get(openId);
   var ae=document.activeElement, aid=ae&&ae.id, ss=ae&&ae.selectionStart, se=ae&&ae.selectionEnd;
   if(!q){
+    el.hidden=true;
     el.innerHTML='<div class="empty"><h3>Pick a quest</h3><p style="margin:0">Details, steps and your update log show up here.</p></div>';
     $('#split').setAttribute('data-view','list');return;
   }
+  el.hidden=false;
   el.innerHTML='<div class="panel">'+detailHtml(q)+'</div>';
   $('#split').setAttribute('data-view',view);
   if(aid){var n=document.getElementById(aid);if(n){n.focus();try{if(ss!=null)n.setSelectionRange(ss,se)}catch(e){}}}

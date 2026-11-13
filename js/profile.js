@@ -197,7 +197,7 @@ function showScreen(){
   }
 }
 function goHome(){
-  if(profileHash())history.pushState(null,'',location.pathname+location.search);
+  if(location.hash)history.pushState(null,'',location.pathname+location.search);
   showScreen();
 }
 $('#menuBtn').addEventListener('click',toggleNavigation);

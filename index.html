@@ -64,6 +64,15 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>
       Sith
     </div>
+    <section class="adder global-adder" aria-label="Add to your list">
+      <div class="seg" role="radiogroup" aria-label="What are you adding?" id="seg"></div>
+      <div class="field">
+        <input id="addInput" type="text" role="combobox" aria-expanded="false" aria-controls="acList" aria-autocomplete="list" autocomplete="off" autocapitalize="sentences" spellcheck="false" placeholder="Add a movie, game, place or task">
+        <button class="btn primary" id="addBtn" type="button">Add</button>
+        <ul class="ac" id="acList" role="listbox" hidden></ul>
+      </div>
+      <p class="hint" id="hint"></p>
+    </section>
     <button type="button" class="top-profile" id="topProfileBtn" aria-label="Open profile" title="Open profile">
       <span id="topAvatar"></span>
     </button>
@@ -80,16 +89,6 @@
   </header>
 
   <div id="homeView">
-  <section class="adder" aria-label="Add a quest">
-    <div class="seg" role="radiogroup" aria-label="What are you adding?" id="seg"></div>
-    <div class="field">
-      <input id="addInput" type="text" role="combobox" aria-expanded="false" aria-controls="acList" aria-autocomplete="list" autocomplete="off" autocapitalize="sentences" spellcheck="false" placeholder="Add a movie, game, place or task">
-      <button class="btn primary" id="addBtn" type="button">Add</button>
-      <ul class="ac" id="acList" role="listbox" hidden></ul>
-    </div>
-    <p class="hint" id="hint"></p>
-  </section>
-
   <section class="collection-heading" aria-labelledby="collectionTitle">
     <div>
       <p class="collection-kicker">Your collection</p>
@@ -127,11 +126,22 @@
     <div class="catalog-heading">
       <p class="collection-kicker">Discover</p>
       <h1 id="gamesTitle">Games</h1>
-      <p class="collection-description">Browse games by release year and add your next play to My List.</p>
+      <p class="collection-description">Search games or browse popular and top-rated titles across PC and consoles.</p>
     </div>
     <div class="catalog-controls">
+      <label for="gamesMode">Browse</label>
+      <select id="gamesMode">
+        <option value="year">Release year</option>
+        <option value="popular">Popular right now</option>
+        <option value="topRated">Top rated</option>
+      </select>
       <label for="gamesYear">Release year</label>
       <select id="gamesYear"></select>
+      <form class="catalog-search" id="gamesSearchForm" role="search">
+        <input id="gamesSearch" type="search" placeholder="Search games" autocomplete="off" aria-label="Search games">
+        <button class="btn quiet" type="submit">Search</button>
+      </form>
+      <button type="button" class="btn quiet" id="gamesClearSearch" hidden>Clear search</button>
       <button type="button" class="btn quiet" id="gamesPrev" disabled>Previous</button>
       <button type="button" class="btn quiet" id="gamesNext">Next</button>
     </div>
