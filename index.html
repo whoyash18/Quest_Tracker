@@ -131,11 +131,10 @@
       </select>
       <label for="gamesYear">Release year</label>
       <select id="gamesYear"></select>
-      <form class="catalog-search" id="gamesSearchForm" role="search">
-        <input id="gamesSearch" type="search" placeholder="Search games" autocomplete="off" aria-label="Search games">
-        <button class="btn quiet" type="submit">Search</button>
-      </form>
-      <button type="button" class="btn quiet" id="gamesClearSearch" hidden>Clear search</button>
+      <button type="button" class="btn quiet games-search-trigger" id="gamesSearchOpenBtn" aria-label="Search games">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+        Search games
+      </button>
       <button type="button" class="btn quiet" id="gamesPrev" disabled>Previous</button>
       <button type="button" class="btn quiet" id="gamesNext">Next</button>
     </div>
@@ -148,7 +147,7 @@
   <div class="search-backdrop" data-search-close></div>
   <section class="search-dialog" role="dialog" aria-modal="true" aria-labelledby="searchDialogTitle">
     <div class="search-dialog-head">
-      <div><p class="collection-kicker">Quick add</p><h2 id="searchDialogTitle">What are you adding?</h2></div>
+      <div><p class="collection-kicker" id="searchDialogKicker">Quick add</p><h2 id="searchDialogTitle">What are you adding?</h2></div>
       <button type="button" class="search-close" id="searchCloseBtn" aria-label="Close search" data-search-close>×</button>
     </div>
     <div class="adder search-adder" aria-label="Search and add an item">

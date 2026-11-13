@@ -342,8 +342,7 @@ body{background:var(--bg);color:var(--fg)}
 .ac-option{width:100%;display:flex;align-items:center;gap:12px;padding:8px;border:0;border-radius:8px;background:transparent;color:var(--fg);text-align:left;cursor:pointer}
 .ac-option[aria-selected="true"],.ac-option:hover{background:var(--surface-2)}
 .ac-option .ac-add{flex:none;margin-left:auto}
-.catalog-search{display:flex;align-items:center;gap:8px;flex:1;min-width:min(100%,260px)}
-.catalog-search input{flex:1;min-width:0;min-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--fg)}
+.games-search-trigger{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px}
 .catalog-card-title{font-size:16px;line-height:1.25}
 .catalog-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .catalog-card-actions .btn{width:100%;padding-inline:8px}

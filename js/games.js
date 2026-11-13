@@ -1,14 +1,13 @@
 'use strict';
 /* IGDB catalog browsing. IGDB credentials stay in the Supabase Edge Function. */
-var gamesYear=0, gamesOffset=0, gamesPageSize=24, gamesItems=[], gamesMode='year', gamesQuery='';
+var gamesYear=0, gamesOffset=0, gamesPageSize=24, gamesItems=[], gamesMode='year';
 function initGamesCatalog(){
   var select=$('#gamesYear'), current=new Date().getFullYear();
   for(var y=current;y>=1970;y--){var o=document.createElement('option');o.value=String(y);o.textContent=String(y);select.appendChild(o)}
   gamesYear=current;
-  $('#gamesMode').addEventListener('change',function(){gamesMode=this.value;gamesQuery='';$('#gamesSearch').value='';$('#gamesClearSearch').hidden=true;select.hidden=gamesMode!=='year';gamesOffset=0;loadGamesCatalog()});
+  $('#gamesMode').addEventListener('change',function(){gamesMode=this.value;select.hidden=gamesMode!=='year';gamesOffset=0;loadGamesCatalog()});
   select.addEventListener('change',function(){gamesYear=Number(this.value);gamesOffset=0;loadGamesCatalog()});
-  $('#gamesSearchForm').addEventListener('submit',function(e){e.preventDefault();gamesQuery=$('#gamesSearch').value.trim();gamesOffset=0;$('#gamesClearSearch').hidden=!gamesQuery;loadGamesCatalog()});
-  $('#gamesClearSearch').addEventListener('click',function(){gamesQuery='';$('#gamesSearch').value='';this.hidden=true;gamesOffset=0;loadGamesCatalog()});
+  $('#gamesSearchOpenBtn').addEventListener('click',function(){openSearch('game')});
   $('#gamesPrev').addEventListener('click',function(){if(gamesOffset>=gamesPageSize){gamesOffset-=gamesPageSize;loadGamesCatalog()}});
   $('#gamesNext').addEventListener('click',function(){gamesOffset+=gamesPageSize;loadGamesCatalog()});
   $('#gamesGrid').addEventListener('click',function(e){
@@ -31,6 +30,7 @@ function addCatalogGame(g,completed){
     return;
   }
   addQuest({title:g.name,kind:'game',sub:String(g.year||gamesYear||''),img:g.image,src:'igdb',srcId:String(g.id),url:g.slug?'https://www.igdb.com/games/'+enc(g.slug):null,verified:true,skipLookup:true,status:completed?'done':'active'});
+  if(!completed)flash('Added to My List.');
   if(completed){var added=gameQuest(g);if(added){tab='done';openId=added.id;view='list';renderAll()}goHome();flash('Added to History as completed.');}
 }
 function gameActionHtml(g){
@@ -46,15 +46,14 @@ function renderGamesCatalog(){
 function loadGamesCatalog(){
   var status=$('#gamesStatus');
   if(!user||!sb){status.textContent='Sign in to browse games.';return}
-  status.textContent=gamesQuery?'Searching IGDB…':(gamesMode==='year'?'Loading games released in '+gamesYear+'…':'Loading '+(gamesMode==='popular'?'popular':'top-rated')+' games…');
+  status.textContent=gamesMode==='year'?'Loading games released in '+gamesYear+'…':'Loading '+(gamesMode==='popular'?'popular':'top-rated')+' games…';
   $('#gamesPrev').disabled=gamesOffset===0;
   $('#gamesNext').disabled=true;
-  var mode=gamesQuery?'search':gamesMode;
-  sb.functions.invoke('igdb-catalog',{body:{mode:mode,query:gamesQuery,year:gamesYear,offset:gamesOffset,limit:gamesPageSize}}).then(function(result){
+  sb.functions.invoke('igdb-catalog',{body:{mode:gamesMode,year:gamesYear,offset:gamesOffset,limit:gamesPageSize}}).then(function(result){
     if(result.error)throw result.error;
     gamesItems=(result.data&&result.data.games)||[];
     renderGamesCatalog();
-    status.textContent=gamesItems.length?(gamesQuery?'Search results for “'+gamesQuery+'”.':gamesMode==='year'?'Showing games released in '+gamesYear+'.':gamesMode==='popular'?'Popular games across PC and consoles.':'Top-rated games across PC and consoles.'):'No games found for this selection.';
+    status.textContent=gamesItems.length?(gamesMode==='year'?'Showing games released in '+gamesYear+'.':gamesMode==='popular'?'Popular games across PC and consoles.':'Top-rated games across PC and consoles.'):'No games found for this selection.';
     $('#gamesPrev').disabled=gamesOffset===0;
     $('#gamesNext').disabled=gamesItems.length<gamesPageSize;
   }).catch(function(){

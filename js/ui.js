@@ -127,7 +127,7 @@ function renderAc(){
   var cu=ac.items.length;
   if(ac.status==='none')h+='<li class="state" role="presentation">No match found.</li>';
   if(ac.status==='error')h+='<li class="state" role="presentation">Could not reach the search sources.</li>';
-  h+='<li class="ac-row" role="presentation"><button type="button" role="option" class="ac-option" id="ac'+cu+'" data-act="pick" data-i="'+cu+'" tabindex="-1" aria-selected="'+(ac.index===cu)+'"><span class="grow"><span class="t">Add “'+esc(typed)+'” as typed</span><span class="s">Custom entry</span></span><span class="btn quiet small ac-add">Add to My List</span></button></li>';
+  if(!searchGameOnly)h+='<li class="ac-row" role="presentation"><button type="button" role="option" class="ac-option" id="ac'+cu+'" data-act="pick" data-i="'+cu+'" tabindex="-1" aria-selected="'+(ac.index===cu)+'"><span class="grow"><span class="t">Add “'+esc(typed)+'” as typed</span><span class="s">Custom entry</span></span><span class="btn quiet small ac-add">Add to My List</span></button></li>';
   ul.innerHTML=h;ul.hidden=false;inp.setAttribute('aria-expanded','true');
   inp.setAttribute('aria-activedescendant',ac.index>=0?'ac'+ac.index:'');
 }
@@ -168,13 +168,15 @@ async function handleCover(file){
 }
 
 /* ---------- events ---------- */
+var searchGameOnly=false;
 function pickAc(i){
   var typed=$('#addInput').value.trim();
   if(i>=0&&i<ac.items.length){
     var it=ac.items[i];
+    if(searchGameOnly){addCatalogGame({id:it.srcId,name:it.title,year:it.sub,image:it.img,slug:(it.url||'').split('/').pop()});closeSearch();return}
     addQuest({title:it.title,sub:it.sub,kind:it.kind,verified:true,src:it.src,srcId:it.srcId,img:it.img,url:it.url});
     closeSearch();
-  }else addCustom(typed);
+  }else if(!searchGameOnly)addCustom(typed);
 }
 function addCustom(typed){
   if(!typed)return;
@@ -189,8 +191,12 @@ function postUpdate(){
   mutate(openId,function(q){q.updates.push({t:t.slice(0,1000),ts:Date.now()})});
 }
 var searchReturn=null, searchOldOverflow='';
-function openSearch(){
+function openSearch(kind){
   if(!$('#searchOverlay').hidden)return;
+  searchGameOnly=kind==='game'||/^#games\b/.test(location.hash||'');
+  if(searchGameOnly){addKind='game';renderSeg();$('#seg').hidden=true;$('#searchDialogKicker').textContent='Games catalog';$('#searchDialogTitle').textContent='Search IGDB games';$('#addInput').placeholder=PLACEHOLDER.game;$('#addBtn').hidden=true;$('#hint').textContent='Search the IGDB catalog, then choose “Add to My List” on a result.'}
+  else{$('#seg').hidden=false;$('#searchDialogKicker').textContent='Quick add';$('#searchDialogTitle').textContent='What are you adding?';$('#addBtn').hidden=false;$('#addInput').placeholder=PLACEHOLDER[addKind];setHint()}
+  $('#addInput').value='';closeAc();
   searchReturn=document.activeElement;searchOldOverflow=document.body.style.overflow;
   $('#searchOverlay').hidden=false;$('#searchOpenBtn').setAttribute('aria-expanded','true');
   document.body.style.overflow='hidden';
@@ -217,7 +223,7 @@ document.addEventListener('click',function(e){
   else if(a==='open'){openId=id;view='detail';confirmDel=null;renderList();renderDetail();window.scrollTo(0,0)}
   else if(a==='back'){view='list';renderDetail()}
   else if(a==='pick'){pickAc(+t.getAttribute('data-i'))}
-  else if(a==='starter'){addKind=t.getAttribute('data-k');renderSeg();var inp=$('#addInput');inp.placeholder=PLACEHOLDER[addKind];inp.value=t.getAttribute('data-t');openSearch();inp.focus();
+  else if(a==='starter'){addKind=t.getAttribute('data-k');renderSeg();var inp=$('#addInput');openSearch();inp.placeholder=PLACEHOLDER[addKind];inp.value=t.getAttribute('data-t');inp.focus();
     if(addKind!=='task'){ac.open=true;suggest(inp.value.trim())}}
   else if(a==='post'){postUpdate()}
   else if(a==='step'){var i=+t.getAttribute('data-i');mutate(openId,function(q){if(q.highlights[i])q.highlights[i].done=!q.highlights[i].done})}
@@ -274,7 +280,7 @@ $('#showPw').addEventListener('change',function(){
 });
 $('#addBtn').addEventListener('click',function(){
   var v=$('#addInput').value.trim();
-  if(ac.index>=0&&ac.open)pickAc(ac.index);else addCustom(v);
+  if(ac.index>=0&&ac.open)pickAc(ac.index);else if(!searchGameOnly)addCustom(v);
 });
 $('#acList').addEventListener('mousedown',function(e){e.preventDefault()});
 var addInput=$('#addInput');
@@ -285,10 +291,9 @@ addInput.addEventListener('input',function(){
   acTimer=setTimeout(function(){suggest(v)},350);
 });
 addInput.addEventListener('keydown',function(e){
-  var total=ac.items.length+1;
-  if(e.key==='ArrowDown'&&ac.open){e.preventDefault();ac.index=(ac.index+1)%total;renderAc()}
-  else if(e.key==='ArrowUp'&&ac.open){e.preventDefault();ac.index=ac.index<=0?total-1:ac.index-1;renderAc()}
-  else if(e.key==='Enter'){e.preventDefault();if(ac.open&&ac.index>=0)pickAc(ac.index);else addCustom(addInput.value.trim())}
+  if(e.key==='ArrowDown'&&ac.open){e.preventDefault();var count=ac.items.length+(searchGameOnly?0:1);if(count){ac.index=(ac.index+1)%count;renderAc()}}
+  else if(e.key==='ArrowUp'&&ac.open){e.preventDefault();var countUp=ac.items.length+(searchGameOnly?0:1);if(countUp){ac.index=ac.index<=0?countUp-1:ac.index-1;renderAc()}}
+  else if(e.key==='Enter'){e.preventDefault();if(ac.open&&ac.index>=0)pickAc(ac.index);else if(!searchGameOnly)addCustom(addInput.value.trim())}
 });
 addInput.addEventListener('blur',function(){setTimeout(function(){if(document.activeElement!==addInput){ac.open=false;renderAc()}},120)});
 addInput.addEventListener('focus',function(){if(addInput.value.trim().length>=2&&addKind!=='task'&&(ac.items.length||ac.status)){ac.open=true;renderAc()}});
