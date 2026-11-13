@@ -64,15 +64,9 @@
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.5 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z"/></svg>
       Sith
     </div>
-    <section class="adder global-adder" aria-label="Add to your list">
-      <div class="seg" role="radiogroup" aria-label="What are you adding?" id="seg"></div>
-      <div class="field">
-        <input id="addInput" type="text" role="combobox" aria-expanded="false" aria-controls="acList" aria-autocomplete="list" autocomplete="off" autocapitalize="sentences" spellcheck="false" placeholder="Add a movie, game, place or task">
-        <button class="btn primary" id="addBtn" type="button">Add</button>
-        <ul class="ac" id="acList" role="listbox" hidden></ul>
-      </div>
-      <p class="hint" id="hint"></p>
-    </section>
+    <button type="button" class="search-open" id="searchOpenBtn" aria-label="Search and add to your list" aria-haspopup="dialog" aria-controls="searchOverlay" aria-expanded="false" title="Search and add">
+      <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+    </button>
     <button type="button" class="top-profile" id="topProfileBtn" aria-label="Open profile" title="Open profile">
       <span id="topAvatar"></span>
     </button>
@@ -147,6 +141,25 @@
     </div>
     <p class="note" id="gamesStatus" role="status">Games catalog will load here.</p>
     <div class="catalog-grid" id="gamesGrid"></div>
+  </section>
+</div>
+
+<div class="search-overlay" id="searchOverlay" hidden>
+  <div class="search-backdrop" data-search-close></div>
+  <section class="search-dialog" role="dialog" aria-modal="true" aria-labelledby="searchDialogTitle">
+    <div class="search-dialog-head">
+      <div><p class="collection-kicker">Quick add</p><h2 id="searchDialogTitle">What are you adding?</h2></div>
+      <button type="button" class="search-close" id="searchCloseBtn" aria-label="Close search" data-search-close>×</button>
+    </div>
+    <div class="adder search-adder" aria-label="Search and add an item">
+      <div class="seg" role="radiogroup" aria-label="Choose what to add" id="seg"></div>
+      <div class="field">
+        <input id="addInput" type="text" role="combobox" aria-expanded="false" aria-controls="acList" aria-autocomplete="list" autocomplete="off" autocapitalize="sentences" spellcheck="false" placeholder="Add a movie, game, place or task">
+        <button class="btn primary" id="addBtn" type="button">Add</button>
+        <ul class="ac" id="acList" role="listbox" hidden></ul>
+      </div>
+      <p class="hint" id="hint"></p>
+    </div>
   </section>
 </div>
 

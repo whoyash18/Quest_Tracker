@@ -1,6 +1,6 @@
-# SideQuest Ledger
+# Sith
 
-SideQuest Ledger is a static browser app published with GitHub Pages. Supabase provides authentication and the database. The app keeps a browser copy for offline continuity and syncs authenticated users' records to Supabase.
+Sith is a static browser app published with GitHub Pages. Supabase provides authentication and the database. The app keeps a browser copy for offline continuity and syncs authenticated users' records to Supabase.
 
 ## Project layout
 

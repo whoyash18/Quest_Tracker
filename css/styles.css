@@ -184,7 +184,7 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
 .cel-card .bar{margin-block:4px}
 
 /* Side menu (opens from the three-line button) and the profile page. */
-.topbar{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;grid-template-areas:"menu brand profile" "search search search";align-items:center;gap:8px;position:relative}
+.topbar{display:grid;grid-template-columns:44px minmax(0,1fr) 48px;grid-template-areas:"menu brand profile";align-items:center;gap:8px;position:relative}
 .menu-btn{width:44px;height:44px;flex:none;display:inline-grid;place-items:center;border:1px solid var(--line);background:var(--surface);border-radius:10px;cursor:pointer;color:var(--fg)}
 .menu-btn:hover{border-color:var(--muted)}
 .scrim{position:fixed;inset:0;z-index:40;background:rgba(6,12,16,.55)}
@@ -323,13 +323,25 @@ body{background:var(--bg);color:var(--fg)}
 .top-profile #topAvatar{display:grid;place-items:center;width:40px;height:40px;line-height:0}
 .top-profile .avatar.lg{display:grid;place-items:center;width:40px;height:40px;font-size:14px}
 .topbar .menu-btn{grid-area:menu}
-.topbar .brand{grid-area:brand;justify-self:center;white-space:nowrap}
-.global-adder{grid-area:search;margin:0;padding:8px 0 0;border:0;background:transparent}
-.global-adder .seg{display:none;gap:5px}
-.global-adder:focus-within .seg{display:flex}
-.global-adder .seg button{min-height:30px;padding:0 11px;font-size:12px}
-.global-adder .field input{min-height:42px}
-.global-adder .hint{display:none}
+.topbar .brand{grid-area:brand;position:absolute;left:50%;transform:translateX(-50%);justify-self:center;white-space:nowrap}
+.search-open{position:absolute;left:calc(50% + 48px);top:2px;z-index:1;width:42px;height:42px;display:grid;place-items:center;border:1px solid transparent;border-radius:50%;background:transparent;color:var(--fg);cursor:pointer}
+.search-open:hover,.search-open[aria-expanded="true"]{border-color:var(--line);background:var(--surface);color:var(--accent)}
+.search-overlay{position:fixed;inset:0;z-index:70;display:flex;justify-content:center;align-items:flex-start;padding:clamp(82px,14vh,150px) 16px 24px}
+.search-backdrop{position:absolute;inset:0;background:rgba(5,12,16,.4);backdrop-filter:blur(2px)}
+.search-dialog{position:relative;z-index:1;width:min(720px,100%);max-height:calc(100vh - 110px);overflow:visible;padding:22px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.36);animation:search-pop .18s ease-out}
+@keyframes search-pop{from{opacity:0;transform:translateY(-10px) scale(.99)}to{opacity:1;transform:none}}
+.search-dialog-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.search-dialog-head h2{margin:0;font:700 23px/1.2 var(--display);color:var(--fg)}
+.search-close{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line);border-radius:50%;background:transparent;color:var(--muted);font-size:24px;line-height:1;cursor:pointer}
+.search-close:hover{background:var(--surface-2);color:var(--fg)}
+.search-adder{margin:14px 0 0;padding:0;border:0;background:transparent}
+.search-adder .seg{gap:6px}
+.search-adder .seg button{min-height:36px;padding-inline:14px}
+.search-adder .field input{min-height:50px}
+.ac li.ac-row{display:block;padding:0}
+.ac-option{width:100%;display:flex;align-items:center;gap:12px;padding:8px;border:0;border-radius:8px;background:transparent;color:var(--fg);text-align:left;cursor:pointer}
+.ac-option[aria-selected="true"],.ac-option:hover{background:var(--surface-2)}
+.ac-option .ac-add{flex:none;margin-left:auto}
 .catalog-search{display:flex;align-items:center;gap:8px;flex:1;min-width:min(100%,260px)}
 .catalog-search input{flex:1;min-width:0;min-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--fg)}
 .catalog-card-title{font-size:16px;line-height:1.25}
@@ -352,9 +364,6 @@ body{background:var(--bg);color:var(--fg)}
   body.user-signed-in .page-top .profile-menu-btn{display:none}
 }
 @media (min-width:900px) and (max-width:1120px){
-  .topbar{grid-template-columns:minmax(90px,110px) minmax(0,1fr) 48px}
-  .global-adder{grid-template-columns:minmax(0,1fr);gap:6px}
-  .global-adder .seg{flex-wrap:wrap}
   .app:not([hidden]) .hud{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto}
   .app:not([hidden]) .score{grid-column:1;grid-row:2;max-width:none}
   .app:not([hidden]) .tally{grid-column:1;grid-row:3;justify-content:flex-start}
@@ -371,13 +380,7 @@ body{background:var(--bg);color:var(--fg)}
 }
 /* Desktop navigation can collapse to an icon rail; narrow screens keep the slide-out drawer. */
 @media (min-width:900px){
-  .topbar{grid-template-columns:minmax(130px,180px) minmax(0,1fr) 48px;grid-template-areas:"brand search profile";gap:16px}
-  .topbar .brand{justify-self:start}
-  .global-adder{padding:0;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}
-  .global-adder .seg{flex-wrap:nowrap}
-  .global-adder .seg button{padding-inline:9px}
-  .global-adder .field{min-width:0}
-  .global-adder .field input{font-size:14px}
+  .topbar{grid-template-columns:44px minmax(0,1fr) 48px;grid-template-areas:"menu brand profile";gap:16px}
   body.sidebar-collapsed .app:not([hidden]){margin-left:80px;transition:margin-left .2s ease}
   body.sidebar-collapsed.user-signed-in .drawer{width:80px;padding-left:12px;padding-right:12px;transition:width .2s ease,padding .2s ease}
   body.sidebar-collapsed.user-signed-in .drawer .sidebar-brand{justify-content:center;gap:0;padding-left:0;padding-right:0}
