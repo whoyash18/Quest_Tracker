@@ -181,7 +181,7 @@ function showScreen(){
   $('.app').hidden=key!=='app';
   $('#profilePage').hidden=key!=='profile';
   closeDrawer(false);
-  document.title=prof?'Profile · Sidequest Ledger':'Sidequest Ledger';
+  document.title=prof?'Profile · Sith':'Sith';
   if(key!==screenKey){
     var prev=screenKey;screenKey=key;window.scrollTo(0,0);if(key==='app'&&prev==='login'){sidebarCollapsed=true;applySidebarState()}
     if(key==='profile'){profDirty=false;profMsg('');renderChrome();fillForm();if(prev==='app')$('#profTitle').focus()}

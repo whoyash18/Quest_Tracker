@@ -136,7 +136,7 @@ function exportData(){
   var payload={app:'sidequest-ledger',version:1,exported:new Date().toISOString(),quests:Array.from(quests.values())};
   var blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
   var a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download='sidequest-ledger-'+new Date().toISOString().slice(0,10)+'.json';
+  a.download='sith-'+new Date().toISOString().slice(0,10)+'.json';
   document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href)},1000);
 }
 function importData(file){
@@ -146,7 +146,7 @@ function importData(file){
     if(!Array.isArray(arr))throw new Error('bad');
     arr.forEach(function(q){if(q&&q.id&&q.title){quests.set(q.id,normalize(q,q.id));markUp(q.id);n++}});
     saveLocal();renderAll();flash('Imported '+plural(n,'quest')+'.');
-  }).catch(function(){flash('That file is not a Sidequest backup.')});
+  }).catch(function(){flash('That file is not a Sith backup.')});
 }
 
 /* ---------- cloud sync (Supabase) ----------

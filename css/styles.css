@@ -224,7 +224,7 @@ textarea{width:100%;min-height:84px;padding:12px;background:var(--bg);border:1px
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
 }
 
-/* SideQuest Ledger: calm, mature dashboard styling. */
+/* Sith: calm, mature dashboard styling. */
 :root{
   --bg:#EDF0F1; --surface:#F8FAFA; --surface-2:#E2E8EA; --line:#C9D2D6;
   --fg:#12202A; --muted:#4D5E69;
