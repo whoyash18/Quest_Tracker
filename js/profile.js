@@ -172,16 +172,24 @@ function closeDrawer(ret){
   if(ret!==false&&drawerReturn&&drawerReturn.focus)drawerReturn.focus();
 }
 function profileHash(){return /^#profile\b/.test(location.hash||'')}
+function gamesHash(){return /^#games\b/.test(location.hash||'')}
 /* showScreen(): one place decides which screen is visible: sign-in, the app, or the profile page. */
 function showScreen(){
-  var inApp=!!user, prof=inApp&&profileHash();
+  var inApp=!!user, prof=inApp&&profileHash(), games=inApp&&!prof&&gamesHash();
   document.body.classList.toggle('user-signed-in',inApp);
   var key=inApp?(prof?'profile':'app'):'login';
   $('#login').hidden=inApp;
   $('.app').hidden=key!=='app';
   $('#profilePage').hidden=key!=='profile';
+  $('#homeView').hidden=games;
+  $('#gamesView').hidden=!games;
+  $('#homeBtn').classList.toggle('nav-active',!games&&!prof);
+  $('#gamesBtn').classList.toggle('nav-active',games);
+  if(games){$('#homeBtn').removeAttribute('aria-current');$('#gamesBtn').setAttribute('aria-current','page')}
+  else{$('#gamesBtn').removeAttribute('aria-current');if(inApp&&!prof)$('#homeBtn').setAttribute('aria-current','page')}
   closeDrawer(false);
-  document.title=prof?'Profile · Sith':'Sith';
+  document.title=prof?'Profile · Sith':(games?'Games · Sith':'Sith');
+  if(games)loadGamesCatalog();
   if(key!==screenKey){
     var prev=screenKey;screenKey=key;window.scrollTo(0,0);if(key==='app'&&prev==='login'){sidebarCollapsed=true;applySidebarState()}
     if(key==='profile'){profDirty=false;profMsg('');renderChrome();fillForm();if(prev==='app')$('#profTitle').focus()}

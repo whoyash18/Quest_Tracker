@@ -19,7 +19,7 @@ function addQuest(p){
   quests.set(id,q);saveLocal();markUp(id);openId=id;tab='active';filter='all';
   $('#addInput').value='';closeAc();renderAll();
   if(q.src)loadDetails(id);
-  else if(q.kind!=='task'||q.auto)lookupBest(id,false);
+  else if(!p.skipLookup&&(q.kind!=='task'||q.auto))lookupBest(id,false);
 }
 function feedback(before,after,o){
   var lb=levelInfo(before).n, la=levelInfo(after).n;

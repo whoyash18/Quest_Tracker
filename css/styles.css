@@ -258,6 +258,24 @@ body{background:var(--bg);color:var(--fg)}
 .tally{gap:10px 18px;font:500 12px var(--body)}
 .tally span{padding:7px 10px;background:var(--surface);border:1px solid var(--line);border-radius:9px}
 .adder{margin-top:8px;padding:16px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.collection-heading{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:28px 0 8px}
+.collection-kicker{margin:0 0 4px;color:var(--muted);font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.collection-heading h1{margin:0;color:var(--fg);font:700 clamp(28px,4vw,36px)/1.1 var(--display);letter-spacing:0}
+.collection-description{margin:5px 0 0;color:var(--muted);font-size:14px}
+.catalog-page{padding-top:28px}
+.catalog-heading h1{margin:0;color:var(--fg);font:700 clamp(28px,4vw,36px)/1.1 var(--display)}
+.catalog-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:22px 0 14px}
+.catalog-controls label{font-weight:600}
+.catalog-controls select{min-height:40px;padding:0 34px 0 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--fg)}
+.catalog-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px;margin-top:16px}
+.catalog-card{overflow:hidden;border:1px solid var(--line);border-radius:13px;background:var(--surface)}
+.catalog-card img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;background:var(--surface-2)}
+.catalog-card-art{display:grid;place-items:center;width:100%;aspect-ratio:3/4;background:var(--surface-2);color:var(--muted);font:700 48px var(--display)}
+.catalog-card-body{display:grid;gap:8px;padding:12px}
+.catalog-card-title{margin:0;font-weight:650;line-height:1.3}
+.catalog-card-year{margin:0;color:var(--muted);font:12px var(--mono)}
+.catalog-card .btn{width:100%}
+.catalog-empty{padding:20px;border:1px dashed var(--line);border-radius:12px;color:var(--muted)}
 .seg button{border-radius:999px}
 .field input,.login-form input,.pform input{border-radius:9px}
 .btn{border-radius:9px}

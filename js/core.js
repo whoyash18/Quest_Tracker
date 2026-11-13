@@ -49,7 +49,7 @@ function fmtDate(ts){return new Date(ts).toLocaleDateString(undefined,{day:'nume
 function fmtStamp(ts){return new Date(ts).toLocaleString(undefined,{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}
 function plural(n,w){return n+' '+w+(n===1?'':'s')}
 function trimText(t,max){t=String(t||'').replace(/\s+/g,' ').trim();if(t.length<=max)return t;var cut=t.slice(0,max),i=cut.lastIndexOf('. ');return i>120?cut.slice(0,i+1):cut.replace(/\s+\S*$/,'')+'…'}
-function safeImg(u){return typeof u==='string'&&/^https:\/\/(image\.tmdb\.org|media\.rawg\.io|upload\.wikimedia\.org)\//.test(u)?u:null}
+function safeImg(u){return typeof u==='string'&&/^https:\/\/(image\.tmdb\.org|media\.rawg\.io|upload\.wikimedia\.org|images\.igdb\.com)\//.test(u)?u:null}
 function safeUrl(u){return typeof u==='string'&&/^https:\/\/([a-z.]*\.)?(themoviedb\.org|rawg\.io|wikipedia\.org)\//.test(u)?u:null}
 function norm(s){return String(s||'').toLowerCase().replace(/^the\s+/,'').replace(/[^a-z0-9]+/g,'')}
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}

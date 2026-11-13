@@ -1,4 +1,4 @@
--- SideQuest Ledger schema baseline, verified against the supplied Supabase schema exports.
+-- Sith schema baseline, verified against the supplied Supabase schema exports.
 -- FOR A NEW LOCAL OR STAGING DATABASE ONLY.
 -- Do not apply this baseline to the existing Project-Delta database.
 

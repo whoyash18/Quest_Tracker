@@ -1,0 +1,2 @@
+[functions.igdb-catalog]
+verify_jwt = true
